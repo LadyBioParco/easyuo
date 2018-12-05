@@ -1,0 +1,40 @@
+start_move:
+event sysmessage hit F11 to start
+waitF11:
+onhotkey F11
+ goto hitF11
+goto waitF11
+hitF11:
+event sysmessage Target the item (type) you want to move
+set #targcurs 1
+set #ltargetid NULL
+target 3s
+wait 3s
+if #ltargetid = NULL
+{
+ goto start_move
+}
+finditem #ltargetid C_ , #backpackid
+set %moveitemtype #findtype
+wait 5
+event sysmessage Target the destination container
+set #ltargetid NULL
+set #targcurs 1
+target 3s
+wait 3s
+if #ltargetid = NULL
+{
+ halt
+}
+set %moveitemdest #ltargetid
+; move items
+move_one_item:
+finditem %moveitemtype C_ , #backpackid
+if #findkind = -1
+ goto start_move
+exevent drag #findid
+wait 7
+exevent dropc %moveitemdest
+wait 7
+goto move_one_item
+

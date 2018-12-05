@@ -1,0 +1,72 @@
+if %LOLLOCOMMANDER <> N/A
+ exit
+set %LOLLOCOMMANDER
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; this is the account definiton file for Lollo Commander Settings ;
+;       YOU NEED TO USE THIS FILL THIS FILE WITH YOUR VARS        ;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+; This account settings ;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+set %collecting TTO
+set %loot Jewels
+set %need Taming
+set %like LMC_SDI_FC_FCR_INTELLIGENCE_LORE_STRENGTH
+set %worker_name Bio
+set %worker_num 2             ; 0 to ...
+set %script_book_name Scripts
+
+set %my_chest VSLAMMD        ; CHEST LIBRI & DROP
+set %bug_id TSPJ          ; BEETLE
+set %pack_cid CKHJOMD    ; BEETLE CONTAINER
+set %clothchest LDWMBND      ; DOVE DROPPARE IL REWARD CLOTH
+set %rewards YWQZQMD       ; DOVE DROPPARE I REWARD NEL CLOTHCHEST
+set %bodbookchest LDWMBND    ; DOVE SONO I LIBRI DA RIEMPIRE
+set %thrashid ZYZLSMD
+
+set %sbook NDNQRMD           ; SOURCE BOOK (BODs TO FILL)
+set %dbook AEAWUMD           ; DESTINATION BOOK (FILLED BODs)
+set %smbook EOMULMD          ; 0.1 SMITH BOOK
+set %tabook OXCKLMD          ; 0.1 TAILOR BOOK
+set %tailorNPC SWI           ; IL TAILOR
+
+set %logx 893                ; POSIZIONE DI LOGOUT IN CASA
+set %logy 584
+set %logz -86
+
+set %myres_x 260            ; GUI MENU
+set %myres_y 1024
+
+set %firebeetle LRFK
+set %chest CFGEBND           ; drop ingots and stones
+set %bookname Mining         ; mining runebook name
+set %unloadTHold 200         ; weight to carry before unload
+
+set %ablade BMKRNMD
+
+set %gatemsg1 Bioparco:_4_nuovi_vendors_appena_riforniti
+set %gatemsg2 bods_0.1_smith_e_da_barbed_kit,_repairs
+set %gatemsg3 horned_kits,_e_uno_scribe_al_vs_servizio
+
+;;;;;;;;;;;;;;;;;;;;;;;;;
+;  This shard settings  ;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+set %clothtype BUI
+set %runetype QWL
+set %rbooktype ZBN
+set %tailortype SWI
+set %smithtype ZYR
+set %bodbooktype DYM
+set %bodtype EYM
+set %ingottype ENK
+set %tinkertolltype KTL
+set %boardtype TLK
+set %fletchertooltype UFG
+set %dfbonestype WNF
+set %scrolltype NXL_QXL_PXL_AYL_ZXL_CYL_BYL_WXL_VXL_YXL_XXL_IYL_HYL_KYL_JYL_EYL_DYL_GYL_FYL_STL_RTL_UTL_TTL_OTL_NTL_QTL_PTL_AUL_ZTL_CUL_BUL_WTL_VTL_YTL_XTL_IUL_HUL_KUL_JUL_EUL_DUL_GUL_FUL_QUL_PUL_SUL_RUL_MUL_LUL_OUL_NUL_YUL_XUL_AVL_ZUL_UUL_TUL_WUL_VUL_GVL_FVL_IVL_HVL_CVL_
+set %peninktype PBG
+set %accountpassword $
+event sysmessage Account settings loaded
+exit

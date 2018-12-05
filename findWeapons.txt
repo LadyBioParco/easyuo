@@ -1,0 +1,111 @@
+set %lootid VTH ; NMH ; VTH
+set %triggers Slayer
+set %chest_ok LFUMNMD
+set %BPL 3
+set %wait 5
+
+gosub scan #backpackid
+ignoreitem reset
+event sysmessage Fatto!
+
+halt
+
+; -- subs -- ;
+
+sub scan
+ wait %wait
+ namespace push
+ nameSpace Local scan , #time , #random , %1
+ set !current %1
+
+ scanthis:
+  finditem %lootid C_ , !current
+  if #findkind <> -1
+  {
+   event property #findid
+
+   gosub splitstring %triggers _ broken
+   set %pcount #result
+   while %pcount > 0
+   {
+    if % . broken . %pcount notin #property
+    {
+     ignoreitem #findid
+     goto scanthis
+    }
+    set %pcount %pcount - 1
+   }
+
+   display yesno #property Lo tengo?
+   if #dispres = yes
+   {
+    exevent drag #findid
+    wait 7
+    exevent dropc %chest_ok
+    wait 7
+    wait 1s
+   }   
+   ignoreitem #findid
+   goto scanthis
+  }
+ namespace clear
+ namespace pop
+return
+; END scan ;
+halt
+
+sub splitstring
+nameSpace Push
+nameSpace Local #sysTime , #random
+set !old_lpc #LPC
+set #LPC 500
+set !string %1
+
+; handle the result-array
+if %0 < 3
+	set !arrayname broken
+else
+	set !arrayname %3
+
+str pos !string %2
+set !i 0
+While #StrRes > 0
+	{
+	; we found a breaksign!
+	set !i !i + 1
+
+	; where is the breaksign?
+	set !pos_ #StrRes
+
+	; where does the word #i end?
+	set !temp !pos_ - 1
+	; Get the word #i
+
+	str left !String !temp
+
+	; 2-step approach to make an array-cell and fill it.
+	; Oneliner is not this easy to understand: 1st: fill a var with the complete name of the var including cell-index: varname[n]
+	set !temp2 !arrayname , !i
+	; 2nd: transmute the name into a variable and fill it
+	set % . !temp2 #StrRes
+
+	; We got one word into the array
+	str del !string 1 !pos_
+	set !string #StrRes
+	; word #i including _ is removed from string
+
+	; Perform search to satisfy while-loop
+	str pos !string %2
+	}
+; Process rest at the end (which doesnt have a breakpoint anymore)
+set !i !i + 1
+
+set !temp2 !arrayname , !i
+set % . !temp2 !string
+
+set %temp !i
+; restore old LPC and namespace
+set #LPC !old_lpc
+nameSpace Clear
+nameSpace Pop
+return %temp

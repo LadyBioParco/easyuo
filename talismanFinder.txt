@@ -1,0 +1,230 @@
+set %source_chest PHNAUMD
+set %chest_ok QLNAUMD
+set %chest_super XQZYOMD
+set %BPL 3
+set %wait 5
+Set #LPC  200000
+
+;gosub sortTalismans %source_chest Blacksmithing 60
+;gosub sortTalismans %source_chest Tailoring 90
+;gosub sortTalismans %source_chest Tinkering 120
+
+;gosub sortTalismans %source_chest Carpentry 60
+;gosub sortTalismans %source_chest Fletching 90
+;gosub sortTalismans %source_chest Cooking 120
+
+gosub sortTalismans %source_chest Inscription 60
+gosub sortTalismans %source_chest Alchemy 90
+gosub sortTalismans %source_chest Cartography 120
+
+halt
+clean:
+ignoreitem reset
+finditem EWR_DWR_GWR_FWR C_ , %source_chest
+if #findkind <> -1
+{
+ event property #findid
+ if slayer in #property
+ {
+  exevent drag #findid
+  wait %wait
+  exevent dropc %chest_ok
+  wait %wait
+  goto clean
+ }
+ exevent drag #findid
+ wait %wait
+ exevent dropc ZYZLSMD ;KMWNMMD
+ wait %wait
+ goto clean
+}
+
+event sysmessage Fatto!
+
+halt
+
+sub sortTalismans
+ namespace push
+ event sysmessage %2
+ set %dropx 45
+ set %sropx 45
+ set !1 %1
+ set !2 %2
+ set !3 %3
+ set !4 %4
+ gosub scan !1 !2 !3 EWR
+ gosub scan !1 !2 !3 DWR
+ gosub scan !1 !2 !3 GWR
+ gosub scan !1 !2 !3 FWR
+ namespace pop
+return
+; -- subs -- ;
+sub scan
+ wait %wait
+ namespace push
+ nameSpace Local scan , #time , #random , %1
+ ignoreitem reset
+ set !current %1
+ set !trig %2
+ set !dropy %3
+ set !lootid %4
+
+ scanthis:
+  finditem !lootid C_ , !current
+  if #findkind <> -1
+  {
+   event property #findid
+   gosub splitstring !trig _ broken
+   set %pcount #result
+   set !score 0
+   while %pcount > 0
+   {
+    if % . broken . %pcount notin #property
+    {
+     ignoreitem #findid
+     goto scanthis
+    }
+    set %pcount %pcount - 1
+   }
+   for !i 10 31
+   {
+
+    set !lookstr !trig
+    str Len !lookstr
+    set !len #strres + 1
+    str Ins !lookstr #spc !len
+    set !lookstr #strres
+
+    str Len !lookstr
+    set !len #strres + 1
+    str Ins !lookstr Bonus: !len
+    set !lookstr #strres
+
+    str Len !lookstr
+    set !len #strres + 1
+    str Ins !lookstr #spc !len
+    set !lookstr #strres
+
+    str Len !lookstr
+    set !len #strres + 1
+    str Ins !lookstr !i !len
+    set !lookstr #strres
+
+;    event sysmessage !lookstr
+    if !lookstr in #property
+    {
+     set !score !i
+     break
+    }
+   }
+   for !i 10 31
+   {
+
+    set !lookstr Exceptional
+    str Ins !lookstr #spc 12
+    set !lookstr #strres
+
+    str Len !lookstr
+    set !len #strres + 1
+    str Ins !lookstr Bonus: !len
+    set !lookstr #strres
+
+    str Len !lookstr
+    set !len #strres + 1
+    str Ins !lookstr #spc !len
+    set !lookstr #strres
+
+    str Len !lookstr
+    set !len #strres + 1
+    str Ins !lookstr !i !len
+    set !lookstr #strres
+
+    if !lookstr in #property
+    {
+     set !score !score + !i
+     if !score > 36 && !i > 18
+     {
+      set %sropx %sropx + 8
+      exevent drag #findid
+      wait %wait
+      exevent dropc %chest_super %sropx !dropy
+      wait %wait
+      ignoreitem #findid
+      goto scanthis
+     }
+     if !score > 28
+     {
+      set %dropx %dropx + 5
+      exevent drag #findid
+      wait %wait
+      exevent dropc %chest_ok %dropx !dropy
+      wait %wait
+      ignoreitem #findid
+      goto scanthis
+     }
+    }
+   }
+   ignoreitem #findid
+   goto scanthis
+  }
+ namespace clear
+ namespace pop
+return
+; END scan ;
+halt
+
+sub splitstring
+nameSpace Push
+nameSpace Local #sysTime , #random
+set !old_lpc #LPC
+set #LPC 500
+set !string %1
+
+; handle the result-array
+if %0 < 3
+	set !arrayname broken
+else
+	set !arrayname %3
+
+str pos !string %2
+set !i 0
+While #StrRes > 0
+	{
+	; we found a breaksign!
+	set !i !i + 1
+
+	; where is the breaksign?
+	set !pos_ #StrRes
+
+	; where does the word #i end?
+	set !temp !pos_ - 1
+	; Get the word #i
+
+	str left !String !temp
+
+	; 2-step approach to make an array-cell and fill it.
+	; Oneliner is not this easy to understand: 1st: fill a var with the complete name of the var including cell-index: varname[n]
+	set !temp2 !arrayname , !i
+	; 2nd: transmute the name into a variable and fill it
+	set % . !temp2 #StrRes
+
+	; We got one word into the array
+	str del !string 1 !pos_
+	set !string #StrRes
+	; word #i including _ is removed from string
+
+	; Perform search to satisfy while-loop
+	str pos !string %2
+	}
+; Process rest at the end (which doesnt have a breakpoint anymore)
+set !i !i + 1
+
+set !temp2 !arrayname , !i
+set % . !temp2 !string
+
+set %temp !i
+; restore old LPC and namespace
+set #LPC !old_lpc
+nameSpace Clear
+nameSpace Pop
+return %temp

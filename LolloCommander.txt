@@ -1,0 +1,863 @@
+initevents
+set %maketype 0
+Event Sysmessage Begin Commander
+; set up specific account variables variables
+call accountSettings.txt
+gosub makemenu
+gosub handlecalls
+Event Sysmessage End Commander
+halt
+
+sub makeMenu
+set %buttons
+set #LPC 1000
+set %wposx 0
+set %wposy 20
+set %resy 1024
+set %columns 4
+set %cellh 23
+set %cellw 68
+set %vspace 4
+set %hspace 10
+set %currx 0
+set %curry 0
+menu clear
+menu font style "b"
+menu font size 8
+menu window title Lollo Commander 1.0
+menu window color $eeeeee
+menu font bgcolor $eeeeee
+menu window transparent 100
+
+gosub _sc addBt Stop 3
+gosub _sc addBt Pause
+menu font color $00ee00
+gosub _sc addLa Current_Action Current , #spc , Action: , #spc , Free 4
+menu font color $000000
+gosub _sc addBt Worker_Menu 2
+gosub _sc addBt Combat_Menu 2
+gosub _sc addBt New_Client
+gosub _sc addBt Login
+gosub _sc addCb chars OptimaPrima_ENZO_BioParco_Okane_Abodo_BudFencer_Morbidona #true 2
+menu combo select chars 4
+gosub _sc addSe Teleport
+gosub _sc addLa Location Location 1
+gosub _sc addCb locations Casa_Tailor_Smith_Stalla_Banca_Gilda #true
+menu combo select locations 1
+gosub _sc addCb movespell Recall_Gate_Sacred #true
+menu combo select movespell 1
+gosub _sc addBt Go
+gosub _sc addLa Quick_Links Quick , #spc , Links 1
+gosub _sc addBt Bank
+gosub _sc addBt Casa
+gosub _sc addBt Stable
+
+if %maketype = 0
+{
+ gosub _sc addSe Speak
+ gosub _sc addBt Open_Bank
+ gosub _sc addBt Balance
+ gosub _sc addBt Claim
+ gosub _sc addBt Stall
+ gosub _sc addBt Lock
+ gosub _sc addBt Secure
+ gosub _sc addBt Release
+ gosub _sc addBt Hide
+ gosub _sc addLa Empty #spc 1
+ gosub _sc addBt BAN 2
+
+ gosub _sc addSe BODs
+ gosub _sc addBt Get_Me
+ gosub _sc addBt Get_Bods
+ gosub _sc addBt Gather
+ gosub _sc addBt Swap_BODs
+ gosub _sc addBt Fill_BODs
+ gosub _sc addBt Drop_BODs
+ gosub _sc addBt Thrash_All
+
+ gosub _sc addSe RuneBooks
+ gosub _sc addBt Copy_Book
+ gosub _sc addBt Move_Book
+ gosub _sc addLa Rune_count Rune , #spc , count
+ gosub _sc addCb runes rune_runes_runes_runes_runes_runes_runes_runes_runes_runes_runes_runes_runes_runes_runes_runes
+ menu combo select runes 16
+
+ gosub _sc addSe MoveItems
+ gosub _sc addBt Stack_Home
+ gosub _sc addBt Stack_Bank
+ gosub _sc addBt Box_To_Box
+ gosub _sc addBt Bod_To_Bod
+ gosub _sc addLa Size Stack , #spc , Size
+ gosub _sc addEd Stack_Size
+
+ gosub _sc addSe Scribe
+ gosub _sc addBt Craft_64
+}
+gosub _sc addSe Farming
+gosub _sc addBt AutoParse
+if %maketype = 1
+{
+ gosub _sc addCh Bones_Loot
+ gosub _sc addBt Heal_Pet
+ gosub _sc addCh Cut_Bones
+}
+if %maketype = 0
+{
+ gosub _sc addBt GodMining
+ gosub _sc addBt Vendor
+ set %currx %columns
+ gosub _sc addBt LTarget
+ event property #charid
+ menu font color $0000ee
+ gosub _sc addLa Type #property 3
+ menu font color $000000
+ set %currx %columns
+ gosub _sc addBt LObject
+}
+else
+{
+ set %currx 1
+ set %curry %curry + 1
+ gosub _sc addLa Type #property 3
+}
+set %curry %curry + 4
+set %currx %columns - 1
+gosub _sc addBt Quit
+
+set !wsizex %cellw + %hspace
+set !wsizex !wsizex * %columns
+set !wsizex !wsizex + 10
+
+set !wsizey %cellh + %vspace
+set !wsizey !wsizey * %curry
+set !wsizey !wsizey + 50
+menu window size !wsizex !wsizey
+menu show %wposx %wposy
+set #LPC 10
+return
+
+/**************************************************************/
+/**************************************************************/
+/*******************       B U T T O N       ******************/
+/**************************************************************/
+/**************************************************************/
+sub addBt ; name [cases]
+set !item %1
+set %buttons %buttons , %1 , \
+delspc:
+str pos %1 _
+if #strres <> 0
+{
+ set !pos #strres
+ str del %1 !pos 1
+ str ins #strres #spc !pos
+ set %1 #strres
+ goto delspc
+}
+if %0 = 2
+ set !size %2
+else
+ set !size 1
+set !fit !size + %currx
+if !fit > %columns
+{
+ set %currx 0
+ set %curry %curry + 1
+}
+set !posx %cellw + %hspace
+set !posx !posx * %currx
+set !posx !posx + 10
+
+set !posy %cellh + %vspace
+set !posy !posy * %curry
+set !posy !posy + 10
+if !size > 1
+{
+ set !sizex %cellw * !size
+ set !adjust !size - 1
+ set !adjust !adjust * 10
+ set !sizex !sizex + !adjust
+}
+else
+ set !sizex %cellw
+menu Button !item !posx !posy !sizex 24 %1
+set %currx %currx + !size
+return
+
+/**************************************************************/
+/**************************************************************/
+/*******************     C H E C K B O X     ******************/
+/**************************************************************/
+/**************************************************************/
+sub addCh ; name [cases]
+set !item %1
+delspc:
+str pos %1 _
+if #strres <> 0
+{
+ set !pos #strres
+ str del %1 !pos 1
+ str ins #strres #spc !pos
+ set %1 #strres
+ goto delspc
+}
+if %0 = 2
+ set !size %2
+else
+ set !size 1
+set !fit !size + %currx
+if !fit > %columns
+{
+ set %currx 0
+ set %curry %curry + 1
+}
+set !posx %cellw + %hspace
+set !posx !posx * %currx
+set !posx !posx + 10
+
+set !posy %cellh + %vspace
+set !posy !posy * %curry
+set !posy !posy + 10
+if !size > 1
+{
+ set !sizex %cellw * !size
+ set !adjust !size - 1
+ set !adjust !adjust * 10
+ set !sizex !sizex + !adjust
+}
+else
+ set !sizex %cellw
+menu check !item !posx !posy !sizex 24 #false %1
+set %currx %currx + !size
+return
+
+
+
+/**************************************************************/
+/**************************************************************/
+/*******************       E D I T B O X     ******************/
+/**************************************************************/
+/**************************************************************/
+sub addEd ; name [cases]
+set !item %1
+delspc:
+str pos %1 _
+if #strres <> 0
+{
+ set !pos #strres
+ str del %1 !pos 1
+ str ins #strres #spc !pos
+ set %1 #strres
+ goto delspc
+}
+if %0 = 2
+ set !size %2
+else
+ set !size 1
+set !fit !size + %currx
+if !fit > %columns
+{
+ set %currx 0
+ set %curry %curry + 1
+}
+set !posx %cellw + %hspace
+set !posx !posx * %currx
+set !posx !posx + 10
+
+set !posy %cellh + %vspace
+set !posy !posy * %curry
+set !posy !posy + 10
+if !size > 1
+{
+ set !sizex %cellw * !size
+ set !adjust !size - 1
+ set !adjust !adjust * 10
+ set !sizex !sizex + !adjust
+}
+else
+ set !sizex %cellw
+menu Edit !item !posx !posy !sizex
+set %currx %currx + !size
+return
+
+/**************************************************************/
+/**************************************************************/
+/*******************        L A B E L        ******************/
+/**************************************************************/
+/**************************************************************/
+sub addLa ; name [text] [cases]
+set !item %1
+delspc:
+str pos %1 _
+if #strres <> 0
+{
+ set !pos #strres
+ str del %1 !pos 1
+ str ins #strres #spc !pos
+ set %1 #strres
+ goto delspc
+}
+if %0 = 3
+ set !size %3
+else
+ set !size 1
+set !fit !size + %currx
+if !fit > %columns
+{
+ set %currx 0
+ set %curry %curry + 1
+}
+set !posx %cellw + %hspace
+set !posx !posx * %currx
+set !posx !posx + 10
+
+set !posy %cellh + %vspace
+set !posy !posy * %curry
+set !posy !posy + 12
+if !size > 1
+{
+ set !sizex %cellw * !size
+ set !adjust !size - 1
+ set !adjust !adjust * 10
+ set !sizex !sizex + !adjust
+}
+else
+ set !sizex %cellw
+menu Text !item !posx !posy %2
+set %currx %currx + !size
+return
+
+/**************************************************************/
+/**************************************************************/
+/*****************         C O M B O B O X     ****************/
+/**************************************************************/
+/**************************************************************/
+sub addCb ; name [values] [hidecount] [cases]
+set !hidecount #false
+if %0 >= 3 && %3 = #true
+ set !hidecount #true
+set !item %1
+delspc:
+str pos %1 _
+if #strres <> 0
+{
+ set !pos #strres
+ str del %1 !pos 1
+ str ins #strres #spc !pos
+ set %1 #strres
+ goto delspc
+}
+if %0 = 4
+ set !size %4
+else
+ set !size 1
+set !fit !size + %currx
+if !fit > %columns
+{
+ set %currx 0
+ set %curry %curry + 1
+}
+set !posx %cellw + %hspace
+set !posx !posx * %currx
+set !posx !posx + 10
+
+set !posy %cellh + %vspace
+set !posy !posy * %curry
+set !posy !posy + 10
+if !size > 1
+{
+ set !sizex %cellw * !size
+ set !adjust !size - 1
+ set !adjust !adjust * 10
+ set !sizex !sizex + !adjust
+}
+else
+ set !sizex %cellw
+menu Combo create !item !posx !posy !sizex 24
+set %currx %currx + !size
+
+set !i 0
+delspcc:
+str pos %2 _
+if #strres <> 0
+{
+ set !pos #strres
+ set !pos1 !pos - 1
+ str left %2 !pos1
+ set !i !i + 1
+ set !name !i , #spc , #strres
+ if !hidecount  = #true
+  set !name #strres
+ menu combo add !item !name
+ str del %2 1 !pos
+ set %2 #strres
+ set %i %i + 1
+ goto delspcc
+}
+set !i !i + 1
+set !name !i , #spc , %2
+if !hidecount  = #true
+ set !name %2
+menu combo add !item !name
+return
+
+/**************************************************************/
+/**************************************************************/
+/*****************         L I S T B O X       ****************/
+/**************************************************************/
+/**************************************************************/
+sub addLi ; name [values] [hidecount] [cases]
+set !hidecount #false
+if %0 = 3 && %3 = #true
+ set !hidecount #true
+set !item %1
+delspc:
+str pos %1 _
+if #strres <> 0
+{
+ set !pos #strres
+ str del %1 !pos 1
+ str ins #strres #spc !pos
+ set %1 #strres
+ goto delspc
+}
+if %0 = 4
+ set !size %4
+else
+ set !size 1
+set !fit !size + %currx
+if !fit > %columns
+{
+ set %currx 0
+ set %curry %curry + 1
+}
+set !posx %cellw + %hspace
+set !posx !posx * %currx
+set !posx !posx + 10
+
+set !posy %cellh + %vspace
+set !posy !posy * %curry
+set !posy !posy + 10
+if !size > 1
+{
+ set !sizex %cellw * !size
+ set !adjust !size - 1
+ set !adjust !adjust * 10
+ set !sizex !sizex + !adjust
+}
+else
+ set !sizex %cellw
+menu List create !item !posx !posy !sizex 24
+set %currx %currx + !size
+
+set !i 0
+delspcc:
+str pos %2 _
+if #strres <> 0
+{
+ set !pos #strres
+ set !pos1 !pos - 1
+ str left %2 !pos1
+ set !i !i + 1
+ set !name !i , #spc , #strres
+ if !hidecount  = #true
+  set !name #strres
+ menu List add !item !name
+ str del %2 1 !pos
+ set %2 #strres
+ set %i %i + 1
+ goto delspcc
+}
+set !i !i + 1
+set !name !i , #spc , %2
+if !hidecount  = #true
+ set !name %2
+menu combo add !item !name
+return
+
+/**************************************************************/
+/**************************************************************/
+/*****************       S E P A R A T O R     ****************/
+/**************************************************************/
+/**************************************************************/
+sub addSe
+ set %curry %curry + 1
+
+ set !posy %cellh + %vspace
+ set !posy !posy * %curry
+ set !posy !posy + 20
+
+ set !sizex %cellw * %columns
+ set !sizex !sizex + 24
+ menu image create img 10 !posy !sizex 4
+ menu image rectangle img 1 1 !sizex 3 $000000 #true
+ set %currx %columns
+return
+
+/**************************************************************/
+/**************************************************************/
+/*****************       C A L L B A C K S     ****************/
+/**************************************************************/
+/**************************************************************/
+sub handlecalls
+loophandlecalls_:
+call myCalls.txt checkForWorldSave
+if #menubutton <> N/A
+{
+ if #menubutton in %buttons
+ {
+  set %menubutton #menubutton
+  hcclean_:
+  str pos %menubutton _
+  if #strres <> 0
+  {
+   str del %menubutton #strres 1
+   set %menubutton #strres
+   goto hcclean_
+  }
+  gosub _sc notify %menubutton
+  event sysmessage %menubutton
+  gosub _sc %menubutton
+  gosub _sc notify Free
+ }
+ set #menubutton N/A
+}
+goto loophandlecalls_
+return
+
+sub bank
+return
+
+sub casa
+ call myCalls.txt recallName %script_book_name 1
+return
+
+sub stables
+ call myCalls.txt recallName %script_book_name 4
+return
+
+sub bank
+ call myCalls.txt recallName %script_book_name 5
+return
+
+sub pause
+ pause
+return
+
+sub godmining
+  call myCalls.txt godMining 7200
+return
+
+sub vendor
+ call myCalls.txt spamgate
+return
+
+sub WorkerMenu
+if %maketype <> 0
+{
+ set %maketype 0
+ gosub makemenu
+}
+return
+
+sub CombatMenu
+if %maketype <> 1
+{
+ set %maketype 1
+ gosub makemenu
+}
+return
+
+sub AutoParse
+ gosub _sc notify Parsing containers
+ call lootparser_call.txt %loot %need %like
+return
+
+sub Quit
+gosub _sc notify Bye...
+menu clear
+menu hide
+halt
+
+sub Stop
+   gosub _sc notify Reset...
+   initevents
+return
+
+sub Ban
+ msg I ban thee$
+return
+
+sub Stall
+ msg Stall$
+return
+
+sub Claim
+ msg Claim$
+return
+
+sub OpenBank
+ msg bank$
+return
+
+sub Balance
+ msg Balance$
+return
+
+sub Lock
+ msg I wish to lock this down$
+return
+
+sub Release
+ msg I wish to release this$
+return
+
+sub Secure
+ msg I wish to secure this$
+return
+
+sub Hide
+ call myCalls.txt hidelast
+return
+
+sub swapBods
+ display target the full book
+ set #ltargetid YC
+ setSourceB:
+ set #targcurs 1
+ wait 1s
+ if #targcurs = 1 || #ltargetid = YC
+  goto setSourceB
+ set %dbook #ltargetid
+ display target the dest book
+ set #ltargetid YC
+ setSourceB_:
+ set #targcurs 1
+ wait 1s
+ if #targcurs = 1 || #ltargetid = YC
+ goto setSourceB_
+ set %sbook #ltargetid
+ call myCalls.txt bodSwap 7200
+return
+
+sub Go
+ menu get locations
+ set !cid #menures
+ call myCalls.txt RecallName %script_book_name !cid
+return
+
+sub copyBook
+ menu get runes
+ call copialibri_call.txt #menures
+return
+
+sub moveBook
+ menu get runes
+ call myCalls.txt spostarune #menures
+return
+
+sub StackHome
+ call myCalls.txt tohome
+return
+
+sub login
+ menu get chars
+ set !cid #menures - 1
+ call myCalls.txt login !cid
+return
+
+sub newClient
+ call myCalls.txt fixClient
+return
+
+sub Gather
+call myCalls.txt gatherBods All
+return
+
+sub FillBODs
+   display target the book to fill
+   set #ltargetid YC
+   setSourceB:
+   set #targcurs 1
+   wait 1s
+   if #targcurs = 1 || #ltargetid = YC
+    goto setSourceB
+   set %sbook #ltargetid
+   display target the dest book
+   set #ltargetid YC
+   setSourceB_:
+   set #targcurs 1
+   wait 1s
+   if #targcurs = 1 || #ltargetid = YC
+   goto setSourceB_
+   set %dbook #ltargetid
+   call myCalls.txt fillBods 7200
+return
+
+sub Ltarget
+ menu delete Type
+ finditem #ltargetid
+ menu Text Type 144 !y #findtype
+return
+
+sub Lobject
+ menu delete Type
+ menu Text Type 144 !y #lobjecttype
+return
+
+sub getBods
+call myCalls.txt hourlyBods 0 6
+return
+
+sub getMe
+ call myCalls.txt hourlyBods %last_logged_in %last_logged_in
+return
+
+sub dropBODs
+   display target the dest container
+   set #ltargetid YC
+   setDropTo:
+   set #targcurs 1
+   wait 1s
+   if #targcurs = 1 || #ltargetid = YC
+    goto setDropTo
+   set !destC #ltargetid
+   
+   movebodsloop_:
+   finditem %BODType C_ , #backpackid
+   if #findkind <> -1
+   {
+    exevent drag #findid
+    wait 8
+    exevent dropc !destC
+    wait 8
+    goto movebodsloop_
+   }
+return
+
+sub craft64
+ call craft64_call.txt
+return
+
+sub thrashAll
+   display yesno recycle all bods?
+   if #dispres = no
+   return
+   thrashbodsloop_:
+   gosub _sc
+   finditem %BODType C_ , #backpackid
+   if #findkind <> -1
+   {
+    exevent drag #findid
+    wait 8
+    exevent dropc %thrashid
+    wait 8
+    goto thrashbodsloop_
+   }
+return
+
+
+sub notify
+delspcnot:
+str pos %1 _
+if #strres <> 0
+{
+ set !pos #strres
+ str del %1 !pos 1
+ str ins #strres #spc !pos
+ set %1 #strres
+ goto delspcnot
+}
+set !note Current , #spc , Action , #spc , #spc , %1
+menu font color $0000ee
+if %1 = Free
+{
+  menu window transparent 100
+  wait 10
+  menu font color $00ee00
+}
+else
+  menu window transparent 100
+menu delete Current_Action
+menu text Current_Action 20 40 !note
+menu font color $000000
+return
+
+
+/**************************/
+/*********SAFECALL*********/
+/**************************/
+sub _sc
+if #menubutton = STOP
+{
+  popout:
+  if %_depth > 1
+  {
+   namespace clear
+   namespace pop
+   set %_depth %_depth - 1
+   goto popout
+  }
+  set %loop #true
+  goto loophandlecalls_
+}
+set %_depth %_depth + 1
+namespace push
+namespace local %1 , #scnt2 , #random
+set !_0 %0
+goto !_0
+0:
+    namespace clear
+    namespace pop
+    set %_depth %_depth - 1
+    return
+1:
+    gosub %1
+    goto _scallend
+2:
+    gosub %1 %2
+    goto _scallend
+3:
+    gosub %1 %2 %3
+    goto _scallend
+4:
+    gosub %1 %2 %3 %4
+    goto _scallend
+5:
+    gosub %1 %2 %3 %4 %5
+    goto _scallend
+6:
+    gosub %1 %2 %3 %4 %5 %6
+    goto _scallend
+7:
+    gosub %1 %2 %3 %4 %5 %6 %7
+    goto _scallend
+8:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8
+    goto _scallend
+9:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8 %9
+    goto _scallend
+10:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
+    goto _scallend
+_scallend:
+set %result #result
+if #menubutton = STOP
+{
+  popout2:
+  if %_depth <> 1
+  {
+   namespace clear
+   namespace pop
+   set %_depth %_depth - 1
+   goto popout2
+  }
+  set %loop #true
+  goto loophandlecalls_
+}
+namespace clear
+namespace pop
+set %_depth %_depth - 1
+return %result
+

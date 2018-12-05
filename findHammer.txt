@@ -1,0 +1,14 @@
+initevents
+ignoreitem reset
+
+start:
+finditem AUH G_16
+if #findkind = -1
+	goto start
+set %dx #findx - #charposx
+set %dy #findy - #charposy
+
+event sysmessage Hammer in sight %dx %dy
+wait 1s
+goto start
+halt

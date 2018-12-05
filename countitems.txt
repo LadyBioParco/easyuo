@@ -1,0 +1,47 @@
+; todo: test
+
+start_count:
+set %counter 0
+ignoreitem reset
+event sysmessage hit F11 to start
+waitF11:
+onhotkey F11
+ goto hitF11
+goto waitF11
+hitF11:
+; crontab by LLL
+initevents
+ignoreitem reset
+event sysmessage Target the container
+set #ltargetid NULL
+set #targcurs 1
+target 5s
+wait 3s
+if #ltargetid = NULL
+{
+ goto start_count
+}
+set %itemsrc #ltargetid
+
+event sysmessage Target the item (type) you want to move
+set #targcurs 1
+set #ltargetid NULL
+target 5s
+wait 3s
+if #ltargetid = NULL
+{
+ goto start_count
+}
+finditem #ltargetid C_ , %itemsrc
+set %itemtype #findtype
+wait 5
+count:
+finditem %itemtype C_ , %itemsrc
+if #findkind <> -1
+ {
+  ignoreitem #findid
+  set %counter %counter + 1
+  goto count
+ }
+msg %counter $
+goto start_count

@@ -1,0 +1,55 @@
+initevents
+set %quanterune 14
+
+Display Punta il book da vuotare
+set #ltargetid YC
+setSource:
+set #targcurs 1
+wait 1s
+if #targcurs = 1 || #ltargetid = YC
+ goto setSource
+set %sourceid #ltargetid
+
+Display Punta il book nuovo
+set #ltargetid YC
+setDest:
+set #targcurs 1
+wait 1s
+if #targcurs = 1 || #ltargetid = YC
+ goto setDest
+set %destid #ltargetid
+
+set %names 0
+ignore:
+finditem QWL #backpackid
+if #findkind <> -1
+{
+  ignoreitem #findid
+  goto ignore
+}
+loopnames:
+set %names %names + 1
+set #lobjectid %sourceid
+event macro 17 0
+wait 8
+set !clickx #contposx + 140
+set !clicky #contposy + 195
+click !clickx !clicky f
+wait 1s
+set !clickx #contposx + 140
+set !clicky #contposy + 120
+click !clickx !clicky f
+wait 1s
+click !clickx !clicky r
+
+finditem QWL #backpackid
+; ev rinominare qui
+
+exevent drag #findid
+wait 8
+exevent dropc %destid
+wait 1s
+if %names < %quanterune
+   goto loopnames
+ignoreitem reset
+halt

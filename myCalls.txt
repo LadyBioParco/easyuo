@@ -1,0 +1,1489 @@
+; This account settings ;
+;;;;;;;;;;;;;;;;;;;;;;;;;
+set %cmdsize_x 264
+set %next_b_y 40
+set #menubutton N/A
+set %last_logged_in 0
+
+set %_0 %0
+goto %_0
+N/A:
+    gosub _sc Test
+    event sysmessage #result
+    halt
+0:
+    gosub _sc Test
+    event sysmessage #result
+    exit
+1:
+    gosub _sc %1
+    exit
+2:
+    gosub _sc %1 %2
+    exit
+3:
+    gosub _sc %1 %2 %3
+    exit
+4:
+    gosub _sc %1 %2 %3 %4
+    exit
+5:
+    gosub _sc %1 %2 %3 %4 %5
+    exit
+6:
+    gosub _sc %1 %2 %3 %4 %5 %6
+    exit
+7:
+    gosub _sc %1 %2 %3 %4 %5 %6 %7
+    exit
+8:
+    gosub _sc %1 %2 %3 %4 %5 %6 %7 %8
+    exit
+9:
+    gosub _sc %1 %2 %3 %4 %5 %6 %7 %8 %9
+    exit
+10:
+    gosub _sc %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
+    exit
+11:
+    gosub _sc %1 %2 %3 %4 %5 %6 %7 %8 %9 %10 %11
+    exit
+halt
+
+
+;*;
+; THOUGT FOR DEV/DEBUG PURPOSES => Runs when you hit play, to step by step inside this file
+;*;
+sub test
+ Event Sysmessage Begin Test
+ call accountSettings.txt
+ gosub _sc fillBods 14400
+ gosub _sc bodSwap 14400
+ Event Sysmessage End Test
+return #result
+
+sub initVars
+ set %_depth 0
+return
+
+;*; V1.1
+; sub fillBods %maxRunTimeInSeconds
+; gosub fillBods 3600 ; runs up to 1 hour
+; call myCalls.txt fillBods 14400 ; runs up to 4 hours
+;*;
+sub fillBods
+ ignoreitem reset
+ set !duration %1
+ gosub _sc checkForWorldSave
+ event macro 8 2
+ wait 10
+ event macro 8 7
+ wait 10
+ if #clilogged = 1 && %worker_name notin #charname
+  gosub _sc logout
+ if #clilogged = 0
+  gosub _sc login %worker_num
+
+ set !dist ( #charposx - %logx )
+ set !dist !dist * !dist
+ set !dist2 ( #charposy - %logy )
+ set !dist2 !dist2 * !dist2
+ set !dist !dist + !dist2
+ if !dist > 100
+  gosub _sc recallName %script_book_name 1
+ gosub _sc moveTo %logx %logy %logz
+ call bodfiller_call.txt !duration %sbook %dbook
+ set #lobjectid #backpackid
+ event macro 17 0
+ wait 8
+ exevent drag  %sbook
+ wait 8
+ exevent dropc %bodbookchest
+ wait 8
+ exevent drag  %dbook
+ wait 8
+ exevent dropc %bodbookchest
+ wait 8
+return
+
+;*; V1.1
+; sub godMining %maxRunTimeInSeconds
+; gosub godMining 3600 ; runs up to 1 hour
+; call myCalls.txt godMining 14400 ; runs up to 4 hours
+;*;
+sub godMining
+ ignoreitem reset
+ set !duration %1
+ gosub _sc checkForWorldSave
+ event macro 8 2
+ wait 10
+ event macro 8 7
+ wait 10
+ if #clilogged = 1 && %worker_name notin #charname
+  gosub _sc logout
+ gosub _sc checkForWorldSave
+ if #clilogged = 0
+  gosub _sc login 2
+ gosub _sc checkForWorldSave
+ call godmining2_call.txt !duration
+ wait 1s
+return
+
+;*; V1.1
+; sub bodSwap %maxRunTimeInSeconds
+; gosub bodSwap 3600 ; runs up to 1 hour
+; call myCalls.txt bodSwap 14400 ; runs up to 4 hours
+;*;
+sub bodSwap
+ ignoreitem reset
+ set !duration %1
+ gosub _sc checkForWorldSave
+ event macro 8 2
+ wait 10
+ event macro 8 7
+ wait 10
+ if #clilogged = 1 && %worker_name notin #charname
+  gosub _sc logout
+ gosub _sc checkForWorldSave
+ if #clilogged = 0
+  gosub _sc login 2
+ gosub _sc checkForWorldSave
+ set #lobjectid %bodbookchest
+ event macro 17 0
+ wait 8
+ exevent drag  %sbook
+ wait 8
+ exevent dropc #backpackid
+ wait 8
+ exevent drag  %dbook
+ wait 8
+ exevent dropc #backpackid
+ wait 8
+ call bodswap_call.txt !duration %my_chest %rewards %dbook %sbook %sbook %pack_cid %bug_id %tailorNPC
+ gosub _sc moveTo %logx %logy %logz
+ set #lobjectid #backpackid
+ event macro 17 0
+ wait 8
+ exevent drag  %sbook
+ wait 8
+ exevent dropc %bodbookchest
+ wait 8
+ exevent drag  %dbook
+ wait 8
+ exevent dropc %bodbookchest
+ wait 8
+ set #lobjectid %my_chest
+ event macro 17 0
+ wait 10
+ move_all_cloth:
+ finditem %clothtype C_ , %my_chest
+ if #findkind <> -1
+ {
+  exevent drag #findid #findstack
+  wait 10
+  exevent dropc %clothchest
+  wait 10
+  goto move_all_cloth
+ }
+return
+
+;*; V1.1
+; sub gatherBods Tailor/Smith/All %bookid
+; gosub gatherBods Tailor %bookid
+; call myCalls.txt gatherBods All %bookid
+;*;
+sub gatherBods
+ ignoreitem reset
+ if %1 = Tailor
+  set !Type 0
+ if %1 = Smith
+  set !Type 1
+ if %1 = All
+  set !Type 2
+ gosub _sc checkForWorldSave
+ event macro 8 2
+ wait 10
+ event macro 8 7
+ wait 10
+ if #clilogged = 1 && %worker_name notin #charname
+  gosub _sc logout
+ gosub _sc checkForWorldSave
+ if #clilogged = 0
+  gosub _sc login %worker_num
+ gosub _sc moveTo %logx %logy %logz
+ exevent drag %cbook
+ wait 10
+ exevent dropc %my_chest
+ wait 10
+ call gatherbods_call.txt !Type %my_chest %tabook %smbook
+ set #lobjectid %my_chest
+ event macro 17 0
+ wait 10
+ exevent drag %cbook
+ wait 10
+ exevent dropc #backpackid
+ wait 10
+return
+
+;*; V1.1
+; sub hourlyBods %char_from %char_to
+; gosub hourlyBods 0-5
+; call myCalls.txt hourlyBods 1-3
+;*;
+sub hourlyBods
+ set !from %1
+ set !to %2
+ ignoreitem reset
+ gosub _sc checkForWorldSave
+ if #clilogged = 1
+  gosub _sc logout
+ for !i !from !to
+  gosub _sc getBodsChar !i
+return
+
+;*; V1.1
+; sub checkForWorldSave
+; gosub checkForWorldSave
+; call myCalls.txt checkForWorldSave
+;*;
+sub checkForWorldSave
+	if %SaveIndex = N/A
+		set %SaveIndex #jindex
+
+	set !Save #false
+	set !Jstart %SaveIndex
+	for !i !Jstart #jindex
+	{
+		scanjournal !i
+		if controllo in #journal || controllino in #journal || ci_sei in #journal || salve in #journal || buongiorno in #journal || ciao in #journal || ola in #journal
+		{
+		 set %SaveIndex !i
+     sound notify.wav
+		}
+		if #jcolor = 53
+		{
+			if WORLD_WILL_SAVE in #journal || WORLD_IS_SAVING in #journal
+			{
+				set !Save #true
+				Event sysmessage SAVE Detected
+				gosub WaitForSaveEnd WORLD_SAVE_COMPLETE 100 !i SAVE
+				set %SaveIndex #jindex
+				set !i #jindex
+			}
+			if CLEANING in #journal
+			{
+				set !Save #true
+				Event sysmessage CLEANING Detected
+				gosub WaitForSaveEnd CLEANED 20 !i CLEANING
+				set %SaveIndex #jindex
+				set !i #jindex
+			}
+		}
+		if SERVER_HAS_CRASHED in #journal
+		{
+  		set %SaveIndex #jindex
+    gosub _sc logout
+	    for !j 1 30
+       wait 60s
+      event sysmessage relog-in char %last_logged_in
+      gosub _sc login %last_logged_in
+			
+      if !return_0 = 1
+      {
+       event sysmessage returning to !return_1
+       gosub _sc recallName !return_1
+      }
+			else
+			{
+       event sysmessage returning to !return_1 !return_2
+       gosub _sc recallName !return_1 !return_2
+      }
+      set %SaveIndex #jindex
+      return
+		}
+		if SERVER_GOING_DOWN in #journal
+		{
+		  set !return_0 %last_recall_0
+      set !return_1 %last_recall_1
+      set !return_2 %last_recall_2
+ 
+			Event sysmessage SERVER DOWN
+  		set %SaveIndex #jindex
+			gosub _sc recallName %script_book_name 1
+      gosub _sc logout
+      for !j 1 30
+       wait 60s
+      event sysmessage relog-in char %last_logged_in
+      gosub _sc login %last_logged_in
+
+      if !return_0 = 1
+      {
+       event sysmessage returning to !return_1
+       gosub _sc recallName !return_1
+      }
+			else
+			{
+       event sysmessage returning to !return_1 !return_2
+       gosub _sc recallName !return_1 !return_2
+      }
+      set %SaveIndex #jindex
+      return
+  	}
+		set %SaveIndex !i
+	}
+return
+
+;*; v 1.1
+; sub recallName %runeName
+; sub recallName %bookName %runeNumber
+; gosub recallName home
+; call myCalls.txt recallName myRuneBook 1
+;*;
+sub recallName
+ ignoreitem reset
+ set %last_recall_0 %0
+ set %last_recall_1 %1
+ set %last_recall_2 %2
+ set !mode %0
+ if !mode = 1
+  set !recallfind %runetype
+ if !mode = 2
+ {
+  set !recallfind %rbooktype
+  set !bookrune %2
+ }
+ set !recallname %1
+ set !posx #charposx
+ set !posy #charposy
+
+ findrecall:
+ gosub _sc checkForWorldSave
+ finditem !recallfind C_ , #backpackid
+ if #findkind = -1
+ {
+  ignoreitem reset
+  return #false
+ }
+ wait 10
+ event property #findid
+ if !recallname in #property
+ {
+  if !mode = 1
+   gosub _sc runeRecall #findid
+  if !mode = 2
+   gosub _sc bookRecall #findid !bookrune
+ }
+ else
+ {
+  ignoreitem #findid
+  goto findrecall
+ }
+ if #charposx = !posx && #charposy = !posy
+ {
+  ignoreitem reset
+  set !rand #random % 4
+  if !rand = 0
+   set !key_dir left
+  if !rand = 1
+   set !key_dir right
+  if !rand = 2
+   set !key_dir up
+  if !rand = 3
+   set !key_dir down
+  event sysmessage One step %key_dir
+  key !key_dir
+  wait 3
+  key !key_dir
+  wait 3
+  set !posx #charposx
+  set !posy #charposy
+  goto findrecall
+ }
+ ignoreitem reset
+return #true
+
+;*; v 1.1
+; sub recallNameTry %runeName
+; sub recallNameTry %bookName %runeNumber %maxtries
+; gosub recallName home
+; call myCalls.txt recallName myRuneBook 1
+;*;
+sub recallNameTry
+ ignoreitem reset
+ set %last_recall_0 %0
+ set %last_recall_1 %1
+ set %last_recall_2 %2
+ set %maxtries %3
+ set !mode %0
+ if !mode = 2
+  set !recallfind %runetype
+ if !mode = 3
+ {
+  set !recallfind %rbooktype
+  set !bookrune %2
+ }
+ set !recallname %1
+ set !posx #charposx
+ set !posy #charposy
+
+ findrecallT:
+ gosub _sc checkForWorldSave
+ finditem !recallfind C_ , #backpackid
+ if #findkind = -1
+ {
+  ignoreitem reset
+  return #false
+ }
+ wait 10
+ event property #findid
+ if !recallname in #property
+ {
+  if !mode = 2
+   gosub _sc runeRecallTry #findid %maxtries
+  if !mode = 3
+   gosub _sc bookRecallTry #findid !bookrune %maxtries
+ }
+ else
+ {
+  ignoreitem #findid
+  goto findrecallT
+ }
+ if #charposx = !posx && #charposy = !posy
+ {
+  ignoreitem reset
+  return #false
+ }
+ ignoreitem reset
+return #true
+
+
+;*;
+; THOUGT FOR INTERNAL USE ;
+;*;
+
+sub getBodsChar
+ ignoreitem reset
+ set !charnum %1
+ log_char_in:
+ gosub _sc login !charnum
+ wait 2s
+ gosub _sc recallName %script_book_name 2
+ gosub _sc getBod %tailortype
+ gosub _sc recallName %script_book_name 3
+ gosub _sc getBod %smithtype
+ gosub _sc recallName %script_book_name 1
+ gosub bodsToBook
+ gosub _sc logout
+return
+
+
+sub getBod
+ ignoreitem reset
+ set !NPC %1
+ BOD:
+ gosub _sc checkForWorldSave
+ finditem !npc
+ if #findkind = -1
+ {
+	return #false
+ }
+
+ movetonpc:
+ finditem !npc
+ event pathfind #findx #findy #findz
+ wait 10
+ if #charposx <> #findx || #charposy <> #findy
+    goto movetonpc
+ exevent Popup !NPC 4
+ wait 10
+ set !timeOut #scnt + 30
+ _acceptBodLoop:
+ gosub _sc checkForWorldSave
+ scanjournal 1
+ if an_offer_may in #journal
+	{
+	deletejournal
+	wait 60s
+	goto BOD
+	}
+ if #scnt > !timeOut
+	goto BOD
+ if #contname <> generic_gump
+	goto _acceptBodLoop
+ str pos #contsize _
+ str del #contsize 1 #strres
+ set !y 20 + #strres
+ _bodRetry:
+ gosub _sc checkForWorldSave
+ click 165 !y
+ wait 10
+ if #contname = generic_gump
+	goto _bodRetry
+ wait 1s
+return #true
+
+sub moveTo
+ ignoreitem reset
+ set !gox %1
+ set !goy %2
+ set !goz %3
+ gosub _sc checkForWorldSave
+ _gotoplace:
+ event pathfind !gox !goy !goz
+ wait 2s
+ if #charposx <> !gox || #charposy <> !goy
+ {
+  gosub _sc checkForWorldSave
+  goto _gotoplace
+ }
+return
+
+sub bodsToBook
+ ignoreitem reset
+ gosub _sc checkForWorldSave
+ ; open backpack
+ set #lobjectid #backPackID
+ event macro 17 0
+ wait 10
+ ; find book
+ finditem %bodbooktype C_ . #backpackID
+ set !book #findid
+ ; find bod
+ findbodloop:
+ gosub _sc checkForWorldSave
+ finditem %bodtype C
+ if #findkind = -1
+ {
+	return
+ }
+ ; drop bod
+ exevent drag #findid
+ wait 10
+ exevent dropc !book
+ wait 10
+ goto findbodloop
+return
+
+sub WaitForSaveEnd
+	set !EndOfSave %1
+	set !SaveTimeOut #scnt + %2
+	set !Jstart %3
+	set !Message %4
+
+	waitforsaveend:
+	for !j !jstart #jindex
+	{
+		scanjournal !j
+		if #jcolor = 53
+		{
+			if !EndOfSave in #journal
+			{
+				set !Save #false
+				set %SaveIndex #jindex
+				set !j #jindex
+			}
+		}
+	}
+	if !Save = #true && #scnt <= !SaveTimeOut
+	{
+		wait 1
+		goto waitforsaveend
+	}
+	if #scnt > !SaveTimeOut
+	{
+		set !Save #false
+		set %SaveIndex #jindex
+		event sysmessage !Message detection timed out...
+	}
+	event sysmessage End of !Message Detected
+return
+
+sub tinker
+ set !Category %1
+ set !ID %2
+ finditem %ingottype C_ , #BACKPACKID
+ if #findkind = -1
+ {
+  finditem %ingottype
+  if #findkind = -1
+  {
+   display out of boards
+   halt
+  }
+  exevent drag %ingottype 60
+  wait 7
+  exevent dropc #backpackid
+  wait 7
+ }
+ else
+ {
+  if #findstack < 10
+  {
+   finditem %ingottype
+   if #findkind = -1
+   {
+    display out of boards
+    halt
+   }
+   exevent drag %ingottype 100
+   wait 7
+   exevent dropc #backpackid
+   wait 7
+  }
+ }
+ tinkeronce:
+ gosub _sc checkForWorldSave
+ finditem %tinkertooltype c_ , #backpackid
+ if #findkind = -1
+ {
+  display no tinker tool!!
+  halt
+ }
+ set #lobjectid #findid
+ event macro 17 0
+ wait 10
+ if #findcnt = 1
+ {
+  set !tcx #contposx + 30
+  set !tcy #contposy + 110
+  click !tcx !tcy f
+  wait 10
+  set !tcx #contposx + 230
+  set !tcy #contposy + 130
+  click !tcx !tcy f
+  wait 10
+  goto tinkeronce
+ }
+ else
+ {
+  set !tcx #contposx + 30
+  set !tcy #contposy + 70 + ( !Category * 20 )
+  click !tcx !tcy f
+  wait 10
+ }
+ pages:
+ if !ID > 10
+ {
+  set !tcx #contposx + 380
+  set !tcy #contposy + 270
+  click !tcx !tcy f
+  wait 10
+  set !ID !ID - 10
+  goto pages
+ }
+ set !tcx #contposx + 230
+ set !tcy #contposy + 50 + ( !ID * 20 )
+ click !tcx !tcy f
+ wait 10
+return
+
+sub bowcraft
+ set !Category %1
+ set !ID %2
+ finditem %boardtype C_ , #BACKPACKID
+ if #findkind = -1
+ {
+  finditem %boardtype
+  if #findkind = -1
+  {
+   display out of boards
+   halt
+  }
+  exevent drag #findid 100
+  wait 7
+  exevent dropc #backpackid
+  wait 7
+ }
+ else
+ {
+  if #findstack < 10
+  {
+   finditem %boardtype
+   if #findkind = -1
+   {
+    display out of boards
+    halt
+   }
+   exevent drag #findid 100
+   wait 7
+   exevent dropc #backpackid
+   wait 7
+  }
+ }
+ bowcraftonce:
+ gosub _sc checkForWorldSave
+ finditem %fletchertooltype C_ , #backpackid
+ if #findkind = -1
+ {
+  gosub _sc tinker 2 21
+  wait 1s
+  goto bowcraftonce
+ }
+ set #lobjectid #findid
+ event macro 17 0
+ wait 10
+ set !tcx #contposx + 30
+ set !tcy #contposy + 70 + ( !Category * 20 )
+ click !tcx !tcy f
+ wait 10
+ pages_:
+ if !ID > 10
+ {
+  set !tcx #contposx + 380
+  set !tcy #contposy + 270
+  click !tcx !tcy f
+  wait 10
+  set !ID !ID - 10
+  goto pages_
+ }
+ set !tcx #contposx + 230
+ set !tcy #contposy + 50 + ( !ID * 20 )
+ click !tcx !tcy f
+ wait 1s
+return
+
+
+sub runeRecall
+ ignoreitem reset
+ 
+ set !rune %1
+ set #ltargetid !rune
+ set !oldtargetkind #ltargetkind
+ set #ltargetkind 1
+ if #targcurs <> 0
+  key esc
+
+ runerecallrecast:
+ gosub _sc checkForWorldSave
+ set !recallindex #jindex
+ event macro 15 31
+ wait 1s
+ event macro 22 0
+ wait 2s
+ for !i !recall #jindex
+ {
+  scanjournal !i
+  if More_reagents_are_needed in #Journal || You_have_not_yet_recovered in #journal || Insufficient_Mana in #journal
+  {
+   wait 3s
+   goto runerecallrecast
+  }
+  if blocking in #Journal
+  {
+   wait 15s
+   goto runerecallrecast
+  }
+ }
+ set #ltargetkind !oldtargetkind
+return
+
+sub bookRecall
+ set !book %1
+ set !rune %2
+ finditem !book C_ , #backpackid
+ if #findkind = -1
+ {
+  return #false
+ }
+ bookrecallrecast:
+ gosub _sc checkForWorldSave
+ set #lobjectid !book
+ event macro 17 0
+ gosub _sc waitGump generic_gump STM
+ set !page ( !rune + 1 ) / 2
+ set !clickx #contposx + 105 + ( !page * 35 )
+ if !page > 4
+  set !clickx !clickx + 30
+ set !clicky #contposy + 195
+ click !clickx !clicky f
+ wait 5
+ set !leftright !rune - ( !page * 2 )
+ set !recallindex #jindex
+ if !leftright = 0
+ {
+  set !clickx #contposx + 300
+  set !clicky #contposy + 145
+  click !clickx !clicky f
+ }
+ else
+ {
+  set !clickx #contposx + 140
+  set !clicky #contposy + 145
+  click !clickx !clicky f
+ }
+ wait 2s
+ for !i !recall #jindex
+ {
+  scanjournal !i
+  if More_reagents_are_needed in #Journal
+   goto bookrecallrecast
+  if You_have_not_yet_recovered in #journal || Insufficient_Mana in #journal
+  {
+   wait 3s
+   goto bookrecallrecast
+  }
+  if blocking in #journal
+  {
+   wait 3s
+   goto bookrecallrecast
+  }
+ }
+return #true
+
+
+sub runeRecallTry
+ ignoreitem reset
+
+ set !rune %1
+ set %maxtries %2
+ set #ltargetid !rune
+ set !oldtargetkind #ltargetkind
+ set #ltargetkind 1
+ if #targcurs <> 0
+  key esc
+ set %tcount 0
+ runerecallrecastT:
+ set %tcount %tcount + 1
+ if %tcount > %maxtries
+ {
+  return #false
+ }
+ gosub _sc checkForWorldSave
+ set !recallindex #jindex
+ event macro 15 31
+ target 3s
+ event macro 22 0
+ wait 5s
+ for !i !recall #jindex
+ {
+  scanjournal !i
+  if More_reagents_are_needed in #Journal || You_have_not_yet_recovered in #journal || Insufficient_Mana in #journal
+  {
+   wait 3s
+   goto runerecallrecastT
+  }
+  if blocking in #Journal
+  {
+   wait 15s
+   goto runerecallrecastT
+  }
+ }
+ set #ltargetkind !oldtargetkind
+return #true
+
+sub bookRecallTry
+ set !book %1
+ set !rune %2
+ set %maxtries %3
+ finditem !book C_ , #backpackid
+ if #findkind = -1
+ {
+  return #false
+ }
+ set %tcount 0
+ bookrecallrecastT:
+ set %tcuont %tcount + 1
+ if %tcount > %maxtries
+ {
+  return #false
+ }
+ gosub _sc checkForWorldSave
+ set #lobjectid !book
+ event macro 17 0
+ gosub _sc waitGump generic_gump STM
+ set !page ( !rune + 1 ) / 2
+ set !clickx #contposx + 105 + ( !page * 35 )
+ if !page > 4
+  set !clickx !clickx + 30
+ set !clicky #contposy + 195
+ click !clickx !clicky f
+ wait 5
+ set !leftright !rune - ( !page * 2 )
+ set !recallindex #jindex
+ if !leftright = 0
+ {
+  set !clickx #contposx + 300
+  set !clicky #contposy + 145
+  click !clickx !clicky f
+ }
+ else
+ {
+  set !clickx #contposx + 140
+  set !clicky #contposy + 145
+  click !clickx !clicky f
+ }
+ wait 3s
+ for !i !recall #jindex
+ {
+  scanjournal !i
+  if More_reagents_are_needed in #Journal
+   goto bookrecallrecastT
+  if You_have_not_yet_recovered in #journal || Insufficient_Mana in #journal
+  {
+   wait 3s
+   goto bookrecallrecastT
+  }
+  if blocking in #journal
+  {
+   wait 3s
+   goto bookrecallrecastT
+  }
+ }
+return #true
+
+sub moveItem
+ ignoreitem reset
+ set !source %1
+ set !item %2
+ set !dest %3
+ movenext:
+ gosub _sc checkForWorldSave
+ finditem !item C_ , !source
+ if #findkind <> -1
+ {
+  exevent drag !item
+  wait 7
+  exevent dropc !dest
+  wait 3
+  goto movenext
+ }
+return
+
+sub stayClose
+ set !moving %1
+ set !maxdist %2
+ 
+ checkdistance:
+ gosub _sc checkForWorldSave
+ finditem !moving G16
+ if #findkind = -1 || #finddist < !maxdist
+ {
+  return
+ }
+ event pathfind #findx #findy #findz
+ wait 20
+ goto checkdistance
+return
+
+;*;
+; CLIENT FUNCTIONS FOR INTERNAL USE ;
+;*;
+
+sub newClient
+ newclient:
+ set !clicnt #clicnt
+ for !i 1 !clicnt
+ {
+  while #clinr <> !i
+  {
+   uoXL swap
+   wait 3
+  }
+  event sysmessage !i
+  gosub fixClient
+  if #result = login
+  {
+   return recovered
+  }
+ }
+ set !clients #clicnt
+ uoXL new
+ waitnewclient:
+ wait 1s
+ if #clicnt = !clients
+  goto waitnewclient
+ uoXL swap
+return created
+
+sub fixClient
+ fixClient:
+ gosub _sc getClientStatus
+ event sysmessage => #result
+ if #result = login
+  return login
+ if #result = logged
+ {
+  gosub _sc logout
+  goto fixClient
+ }
+ if #result = logoutgump
+ {
+  set !clickx #contposx + 225
+  set !clicky #contposy + 90
+  click !clickx !clicky
+  goto fixClient
+ }
+ if #result = shard
+ {
+  click 595 445 f
+  goto fixClient
+ }
+ if #result = charselect
+ {
+  click 595 445 f
+  goto fixClient
+ }
+ if #result = kaputt
+ {
+  return kaputt
+ }
+return
+
+sub getClientStatus
+ set !loopcnt 0
+ redocheckstatusonce:
+ if #clilogged = 1
+ {
+  if #contname = waiting_gump && !loopcnt = 0 && #contsize = 203_121
+  {
+   set !c_cl_x #contposx + 100
+   set !c_cl_y #contposy + 90
+   click !c_cl_x !c_cl_y f
+   wait 5
+   set !loopcnt !loopcnt + 1
+   goto redocheckstatusonce
+  }
+  wait 1s
+  if #contname = YesNo_gump && #contkind = SXUC
+   return logoutgump
+  if #charname = N/A
+   return kaputt
+  return logged
+ }
+ if #contname = waiting_gump && !loopcnt = 0 && #contsize = 408_288
+ {
+  set !c_cl_x #contposx + 200
+  set !c_cl_y #contposy + 260
+  click !c_cl_x !c_cl_y f
+  wait 5
+  set !loopcnt !loopcnt + 1
+  goto redocheckstatusonce
+ }
+ if #contname = MainMenu_gump && #contkind = QKJD
+ {
+  for !i 0 15
+   key back
+  return login
+ }
+ if #contname = normal_gump && #contkind = WNGD
+ {
+  return shard
+ }
+ if #contname = Login_gump && #contkind = YMAC
+ {
+  return charselect
+ }
+ if #contname = waiting_gump
+ {
+  if !loopcnt = 0
+  {
+   wait 10s
+   set !loopcnt !loopcnt + 1
+   goto redocheckstatusonce
+  }
+  else
+  {
+   return kaputt
+  }
+ }
+return
+
+sub logout
+ set !Dx #charposx - %logx
+ set !Dy #charposy - %logy
+ set !Dx abs !Dx
+ set !Dy abs !Dy
+ if !Dx > 8 || !Dy > 8
+  gosub _sc recallName %script_book_name 1
+ gosub _sc moveTo %logx %logy %logz
+ 
+ logout:
+ set !timeOut #scnt + 5
+ event macro 8 1
+ wait 20
+ waitpaperdoll:
+ if #scnt > !timeOut
+	goto logout
+ if #contname <> paperdoll_gump
+	goto waitpaperdoll
+ contpos #clixres 0
+ wait 20
+ _waitConfirm:
+ set !timeOut #scnt + 3
+ set !paperDollX #clixres + 210
+ click !paperDollX 110
+ waitlogout:
+ if #scnt > !timeOut
+ 	goto _waitConfirm
+ if #contname <> YesNo_gump
+	goto waitlogout
+ set !x #contposx + 120
+ set !y #contposy + 90
+ _quit:
+ click !x !y
+ set !timeOut #scnt + 20
+ _waitlogout:
+ if #scnt > !timeout
+	goto _quit
+ if #contname <> MainMenu_gump
+	goto _waitlogout
+return
+
+sub login
+ set %last_logged_in %1
+ set !char %1
+ login:
+ gosub _sc newClient
+ gosub _sc waitGump MainMenu_gump KRDD
+ if #result = #false
+  goto login
+ click 530 400
+ for !i 1 16
+	key back
+ wait 10
+ msg %accountpassword
+ ; shard
+ gosub _sc waitGump normal_gump CHCD
+ if #result = #false
+  goto login
+ msg $
+ ;char
+ gosub _sc waitGump normal_gump UYLB
+ if #result = #false
+  goto login
+ set !y !char * 40 + 130
+ click 300 !y d
+ wait 1s
+ if #clilogged = 0
+ {
+  wait 5s
+  if #clilogged = 0
+   goto login
+ }
+ event macro 8 2
+ wait 5
+ event macro 8 7
+ wait 5
+return #true
+
+sub waitGump
+ set !gumpname %1
+ set !gumpkind %2
+ set !gumptime ( #systime / 1000 )
+ waitgump:
+ set !checkgumptime ( #systime / 1000 ) - !gumptime
+ if ( !gumpname <> #contname || !gumpkind <> #contkind ) && !checkgumptime < 10
+  goto waitgump
+ if !gumpname = #contname && !gumpkind = #contkind
+ {
+  wait 3
+  return #true
+ }
+return #false
+
+sub getFromChest
+set %chest %1
+set %type %2
+set %quantity %3
+
+set #lobjectid %chest
+event macro 17 0
+wait 8
+_checknext:
+finditem %type C_ , %chest
+if #findkind <> -1
+{
+   if #findstack >= %quantity
+   {
+      exevent drag #findid %quantity
+      wait 6
+      exevent dropc #backpackid
+      wait 6
+      return #true
+   }
+   ignoreitem #findid
+   goto _checknext
+}
+return #false
+
+sub goToMyChest
+   _gotochest:
+   event pathfind %logx %logy %logz
+   wait 2s
+   if #charposx <> %logx || #charposy <> %logy
+    goto _gotochest
+return
+
+
+sub hidelast
+ Event sysmessage Target the item to hide
+ set #ltargetid YC
+ setHide:
+ set #targcurs 1
+ wait 1s
+ if #targcurs = 1 || #ltargetid = YC
+  goto setHide
+ set %hideid #ltargetid
+ hideitem #ltargetid
+return
+
+sub spostarune
+set %quanterune %1
+Display Punta il book da vuotare
+set #ltargetid YC
+setSource:
+set #targcurs 1
+wait 1s
+if #targcurs = 1 || #ltargetid = YC
+ goto setSource
+set %sourceid #ltargetid
+
+Display Punta il book nuovo
+set #ltargetid YC
+setDest:
+set #targcurs 1
+wait 1s
+if #targcurs = 1 || #ltargetid = YC
+ goto setDest
+set %destid #ltargetid
+
+set %names 0
+ignore:
+finditem %runetype #backpackid
+if #findkind <> -1
+{
+  ignoreitem #findid
+  goto ignore
+}
+loopnames:
+set %names %names + 1
+set #lobjectid %sourceid
+event macro 17 0
+wait 8
+set !clickx #contposx + 140
+set !clicky #contposy + 195
+click !clickx !clicky f
+wait 1s
+set !clickx #contposx + 140
+set !clicky #contposy + 120
+click !clickx !clicky f
+wait 1s
+click !clickx !clicky r
+
+finditem %runetype #backpackid
+; ev rinominare qui
+
+exevent drag #findid
+wait 8
+exevent dropc %destid
+wait 1s
+if %names < %quanterune
+   goto loopnames
+ignoreitem reset
+return
+
+sub tohome
+gosub _sc recallName %script_book_name 5
+msg bank$
+wait 8
+display target the item type
+set #ltargetid YC
+setSource:
+set #targcurs 1
+wait 1s
+if #targcurs = 1 || #ltargetid = YC
+ goto setSource
+set %movetype #ltargetid
+menu get stack_count
+set %movestack #menures
+to_home_:
+gosub _sc recallName %script_book_name 5
+msg bank$
+wait 8
+finditem %movetype C_ , #contid
+set !loop #findkind
+exevent drag #findid %movestack
+wait 8
+exevent dropc #backpackid
+wait 10
+gosub _sc recallName %script_book_name 1
+gosub _sc goToMyChest
+finditem %movetype C_ , #backpackid
+exevent drag #findid #findstack
+wait 8
+exevent dropc %my_chest
+wait 10
+if !loop <> -1
+ goto to_home_
+return
+
+sub walk
+if %1 = e
+{
+ set %destx #charposx + %2
+ set %desty #charposy
+}
+if %1 = w
+{
+ set %destx #charposx - %2
+ set %desty #charposy
+}
+if %1 = n
+{
+ set %destx #charposx
+ set %desty #charposy - %2
+}
+if %1 = s
+{
+ set %destx #charposx
+ set %desty #charposy + %2
+}
+if %1 = se || %1 = down
+{
+ set %destx #charposx + %2
+ set %desty #charposy + %2
+}
+if %1 = sw || %1 = left
+{
+ set %destx #charposx - %2
+ set %desty #charposy + %2
+}
+if %1 = ne || %1 = right
+{
+ set %destx #charposx + %2
+ set %desty #charposy - %2
+}
+if %1 = nw || %1 = up
+{
+ set %destx #charposx - %2
+ set %desty #charposy - %2
+}
+ pfind:
+ event pathfind %destx %desty
+ wait 1s
+ if #charposx <> %destx || #charposy <> %desty
+ goto pfind
+
+return
+
+sub spamgate
+gosub clearspc %gatemsg1
+set %gatemsg1 #result
+gosub clearspc %gatemsg2
+set %gatemsg2 #result
+gosub clearspc %gatemsg3
+set %gatemsg3 #result
+
+display target the rune or spellbook
+set #ltargetid YC
+spamRune:
+set #targcurs 1
+wait 1s
+if #targcurs = 1 || #ltargetid = YC
+goto spamRune
+set !destGate #ltargetid
+loopgate_:
+gosub _sc checkForWorldSave
+set #targcurs = 0
+event macro 15 51
+waitgatecast_:
+wait 8
+if #targcurs <> 1
+ goto waitgatecast_
+set !check #maxmana
+set #ltargetid !destGate
+event macro 22 0
+wait 3s
+if #mana < !check
+{
+ msg %gatemsg1 $
+ wait 10s
+ msg %gatemsg2 $
+ wait 10s
+ msg %gatemsg3 $
+ wait 8s
+}
+goto loopgate_
+return
+
+sub clearspc
+ __del_spc_2:
+ str pos %1 _
+ if #strres <> 0
+ {
+  set !pos #strres
+  str del %1 !pos 1
+  str ins #strres #spc !pos
+  set %1 #strres
+  goto __del_spc_2
+ }
+return %1
+
+/**************************/
+/*********SAFECALL*********/
+/**************************/
+sub _sc
+if #menubutton = STOP
+{
+  popout:
+  if %_depth <> 1
+  {
+   namespace clear
+   namespace pop
+   set %_depth %_depth - 1
+   goto popout
+  }
+  set %loop #true
+  goto listen_calls
+}
+set %_depth %_depth + 1
+namespace push
+namespace local %1 , #scnt2 , #random
+set !_0 %0
+goto !_0
+0:
+    namespace clear
+    namespace pop
+    set %_depth %_depth - 1
+    return
+1:
+    gosub %1
+    goto _scallend
+2:
+    gosub %1 %2
+    goto _scallend
+3:
+    gosub %1 %2 %3
+    goto _scallend
+4:
+    gosub %1 %2 %3 %4
+    goto _scallend
+5:
+    gosub %1 %2 %3 %4 %5
+    goto _scallend
+6:
+    gosub %1 %2 %3 %4 %5 %6
+    goto _scallend
+7:
+    gosub %1 %2 %3 %4 %5 %6 %7
+    goto _scallend
+8:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8
+    goto _scallend
+9:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8 %9
+    goto _scallend
+10:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
+    goto _scallend
+_scallend:
+set %result #result
+if #menubutton = STOP
+{
+ exit
+}
+namespace clear
+namespace pop
+set %_depth %_depth - 1
+return %result
+

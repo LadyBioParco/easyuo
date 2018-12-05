@@ -1,0 +1,1495 @@
+set %_0 %0
+goto %_0
+N/A:
+    gosub _sc Test
+    event sysmessage #result
+    halt
+0:
+    exit
+1:
+    exit
+2:
+    exit
+3:
+    gosub _sc filler %1 %2 %3
+    exit
+halt
+
+sub test
+ ; 30 seconds of bodfilling
+ set #lpc 1000
+ Event Sysmessage Test Begin
+ gosub _sc filler 3600 AEAWUMD SGBWUMD
+ Event Sysmessage Test End
+return #result
+
+sub filler
+; script will run for
+set %duration %1
+; SOURCE BOOK (BODS TO FILL)
+set %sBook %2 ;
+; DESTINATION BOOK
+set %dBook %3 ;
+
+
+event sysmessage %duration %sbook %dbook
+
+set #menubutton N/A
+if *BoydonRTBFUseColoredCloth <> #true && *BoydonRTBFUseColoredCloth <> #false
+	set *BoydonRTBFUseColoredCloth #true
+event macro 31 ;close gumps
+
+gosub _sc CheckFreeShard
+gosub _sc SetupMenu
+gosub _sc SetupLoop
+gosub _sc InizializeVars
+gosub _sc InizializeLibraries %MenuFunctions Menu %MenuRequredVersion
+gosub _sc InizializeLibraries %BodFunctions Bod %BodRequredVersion
+gosub _sc OpenPaperDoll 670 10
+gosub _sc OpenContainer #backpackid 655 335
+if ! %UseBank
+	gosub _sc OpenContainer %Secure 480 315
+if %UseBank
+	gosub _sc OpenContainer bank 480 315 #true
+
+set %startfilltime ( #systime / 1000 )
+
+mainloop:
+gosub _sc CheckForWorldSave
+set %currfilltime (  #systime / 1000 ) - %startfilltime
+if %currfilltime > %duration
+ return %currfilltime
+event sysmessage %currfilltime
+gosub _sc GetBod
+if #result = #false
+ return %currfilltime
+gosub _sc GetParameters
+if ! %BodToMakeQuantity ;the bod is already full
+{
+	gosub _sc DropBod
+	ignoreitem %Bod bods
+	goto mainloop
+}
+gosub _sc GetSewingKit
+gosub _sc GetScissor
+if #result = #false
+{
+ event sysmessage NO SCISSORS FOUND
+ return
+}
+gosub _sc CalculateMaterials %BodToMakeQuantity
+event sysmessage %BodToMakeQuantity
+gosub _sc GetMaterials
+if #result = #false
+{
+ event sysmessage OUT OF MATERIAL
+ return
+}
+
+gosub _sc Craft 1 %BodToMakeQuantity
+if #result = #false
+{
+ event sysmessage OUT OF MATERIAL
+ return
+}
+gosub _sc FillBod
+gosub _sc DropBod
+ignoreitem %Bod bods
+goto mainloop
+return
+
+;==================
+; SCRIPT SPECIFIC SUBS
+;==================
+
+;------------------------------------
+; This will look for BODs in your backpack
+; and/or in your recure
+
+sub GetBod
+  set !retries 0
+	gb1:
+	gosub _sc CheckForWorldSave
+  finditem %BodType C_ , #backpackid
+	if #findkind <> -1
+	{
+		call %BodFunctions BodIsTailor #findcol
+		if ! #result
+		{
+			ignoreitem #findid bods
+      set !retries 0
+			goto gb1
+		}
+		if #result
+		{
+			gosub _sc GetProperty #findid
+			set %BodProperty #result
+			call %BodFunctions BodIsSmall %BodProperty
+			if #result
+			{
+				set %Bod #findid
+				goto gb_out
+			}
+			if ! #result
+			{
+			  set !retries 0
+				ignoreitem #findid bods
+				goto gb1
+			}
+		}
+	}
+	if #findkind = -1
+	{
+    finditem %sBook C_ , #backpackid
+    if #findkind = -1
+    {
+     event sysmessage ok No more tailor BODs!
+     ignoreitem reset bods
+     return #false
+    }
+    if #findkind <> -1
+    {
+     set !myIndex #jindex
+     set #LOBJECTID %sBook
+   	 event Macro 17 0
+     wait 10
+     gosub _sc checkForWorldSave
+     for !i !myindex #jindex
+     {
+      scanjournal !i
+      if The_book_is_empty in #journal
+       return #false
+     }
+     set !bbX #contposx + 40
+     set !bbY #contposy + 100
+     click !bbX !bbY f
+     wait 10
+     gosub _sc checkForWorldSave
+     finditem %BodType C_ , #backpackid
+     if #findkind = -1 && !retries = 10
+     {
+      return #false
+     }
+     set !retries !retries + 1
+     goto gb1
+    }
+	}
+	gb_out:
+return #true
+
+;------------------------------------
+; Once we have the bod, we find out what
+; bod it is and the needed material to
+; accomplish it
+
+sub GetParameters
+	set %Tmplpc #lpc
+	set #lpc 500
+	call %BodFunctions GetTailorBodParameters %BodProperty
+	call %BodFunctions GetBodMaterial tailor %BodProperty
+	call %BodFunctions BodIsExceptional %BodProperty
+	set %BodIsExceptional #result
+	call %BodFunctions GetBodQuantity %BodProperty
+	set %BodQuantity #result
+	call %BodFunctions GetBodAlredyMadeQuantity %BodProperty
+	set %BodAlredyMadeQuantity #result
+	set %BodToMakeQuantity %BodQuantity - %BodAlredyMadeQuantity
+
+;	finditem %type C_, #backpackid
+;  if #findkind <> -1
+;  [
+;    set %BodToMakeQuantity %BodToMakeQuantity - #findcnt
+;  ]
+	set #lpc %Tmplpc
+return
+
+;------------------------------------
+; We look for one (or more) sewing kit(s) and we keep
+; track of how many uses each sewing kit has left
+
+sub GetSewingKit
+	set %TotalUses 0
+	set %ToolCount 1
+	gsk1:
+	gosub _sc CheckForWorldSave
+	finditem %SewingKitType C_ , #backpackid
+	if #findcol <> 0
+	{
+		Event Sysmessage This seems to be a runic kit!
+		ignoreitem #findid sewing
+		goto gsk1
+	}
+	if #findkind <> -1
+	{
+		gosub _sc GetToolUses #findid
+		set %TotalUses ( %totaluses + #strres )
+		set %ToolId . %ToolCount #findid
+		set %ToolRU . %ToolCount #strres
+		if %TotalUses < %BodToMakeQuantity
+		{
+			ignoreitem %ToolId . %ToolCount sewing
+			set %ToolCount %ToolCount + 1
+			goto gsk1
+		}
+	}
+	if #findkind = -1
+	{
+		finditem %SewingKitType C_ , %secure
+		if #findkind = -1
+		{
+      ; get ingots
+      finditem ENK C_ , #backpackid
+      if #findkind <> -1
+       set !ing_cnt 60 - #findstack
+      else
+       set !ing_cnt 60
+      finditem ENK C_ , %secure
+      exevent drag #findid !ing_cnt
+      wait 7
+      exevent dropc #backpackid
+      wait 7
+      ; craft sewing kit
+      finditem KTL C_ , #backpackid
+      if #findkind = -1
+       display Tinker tools missing
+      set #lobjectid #findid
+      event macro 17 0
+      wait 10
+      if #findcnt = 1
+      { ; craft tinker tool
+        set !tinkx #contposx + 30
+        set !tinky #contposy + 110
+        click !tinkx !tinky f
+        wait 10
+        set !tinkx #contposx + 240
+        set !tinky #contposy + 130
+        click !tinkx !tinky f
+        wait 10
+      }
+      ; craft sewing kit
+      finditem KTL C_ , #backpackid
+      set #lobjectid #findid
+      event macro 17 0
+      wait 10
+      set !tinkx #contposx + 30
+      set !tinky #contposy + 110
+      click !tinkx !tinky f
+      wait 10
+      set !tinkx #contposx + 240
+      set !tinky #contposy + 190
+      click !tinkx !tinky f
+      wait 10
+ 			goto gsk1
+		}
+		else if #findkind <> -1
+		{
+			gosub _sc OpenPaperDoll 670 10
+			gosub _sc _dragItem #findid nostack #backpackid
+			goto gsk1
+		}
+
+	}
+	ignoreitem reset sewing
+return
+
+;------------------------------------
+; Let'us ensure that we have a scissor in our backpack
+
+sub GetScissor
+	gs1:
+	gosub _sc CheckForWorldSave
+	finditem %ScissorType C_ , #backpackid
+	if #findkind <> -1
+	{
+		set %Scissor #findid
+		goto gs_out
+	}
+	if #findkind = -1
+	{
+		finditem %ScissorType C_ , %secure
+		if #findkind <> -1
+		{
+			gosub _sc OpenPaperDoll 670 10
+			gosub _sc _dragItem #findid nostack #backpackid
+			goto gs1
+		}
+		if #findkind = -1
+		{
+			ignoreitem reset bods
+      return #false
+		}
+	}
+	gs_out:
+return #true
+
+;------------------------------------
+; This will calculate how much material
+; is needed to accomplish te bod
+;
+; %1 Number of items to be added to the Bod
+
+sub CalculateMaterials
+	set %UsingBones #false
+	if %Bones > 0
+	{
+		set %UsingBones #true
+		set %RequiredBones %Bones * %1
+	}
+	if %Cloth > 0
+		set %RequiredMaterial %Cloth * %1
+	if %Hides > 0
+		set %RequiredMaterial %Hides * %1
+return
+
+sub GetMaterials
+	if %Material = Cloth
+	{
+		gosub _sc CheckForWorldSave
+		if ! %UseColoredCloth
+			gosub _sc CheckResources %ClothType #backpackid
+		if %UseColoredCloth
+			gosub _sc CheckResources %ClothType #backpackid any
+		set %MaterialToDrag %RequiredMaterial - #result
+		if %MaterialToDrag > 0
+		{
+			gm1:
+			gosub _sc CheckForWorldSave
+			finditem %ClothType C_ , %secure
+			if %ClothColour <> N/A
+			{
+				if #findkind <> -1 && #findstack >= %MaterialToDrag && #findcol = %ClothColour
+				{
+					gosub _sc OpenPaperDoll 670 10
+  				gosub _sc _dragItem #findid %MaterialToDrag #backpackid
+				}
+				if ( #findkind <> -1 && ( #findstack < %MaterialToDrag || #findcol <> %ClothColour ) )
+				{
+					ignoreitem #findid cloths
+					goto gm1
+				}
+				if #findkind = -1
+				{
+					event sysmessage NO cloth
+          return #false
+				}
+			}
+			if %ClothColour = N/A
+			{
+				if #findkind <> -1 && #findstack >= %MaterialToDrag
+				{
+					gosub _sc OpenPaperDoll 670 10
+					gosub _sc _dragItem #findid %MaterialToDrag #backpackid
+				}
+				if #findkind <> -1 && #findstack < %MaterialToDrag
+				{
+					ignoreitem #findid cloths
+					goto gm1
+				}
+				if #findkind = -1
+				{
+          event sysmessage NO cloth
+          return #false
+				}
+			}
+		}
+
+		set %ClothColour N/A
+		ignoreitem reset cloths
+	}
+	if %Material = 0 || %Material = 2220 || %Material = 2117 || %Material = 2129
+	{
+		gosub _sc CheckForWorldSave
+		gosub _sc CheckResources %HideType #backpackid %Material
+		set %MaterialToDrag %RequiredMaterial - #result
+		if %MaterialToDrag > 0
+		{
+			gm2:
+			gosub _sc CheckForWorldSave
+			finditem %HideType C_ , %secure
+			if #findkind <> -1 && #findstack >= %MaterialToDrag && #findcol = %Material
+			{
+				ignoreitem reset hides
+				gosub _sc OpenPaperDoll 670 10
+				gosub _sc _dragItem #findid %MaterialToDrag #backpackid
+			}
+			if #findkind <> -1 && #findcol <> %Material
+			{
+				ignoreitem #findid hides
+				goto gm2
+			}
+			if #findkind <> -1 && #findstack < %MaterialToDrag
+			{
+          event sysmessage NO material
+          return #false
+			}
+			if #findkind = -1
+			{
+				if %Material = 0
+				{
+          event sysmessage NO leather
+          return #false
+				}
+				if %Material <> 0
+				{
+          event sysmessage NO %HideColor %Material
+          return #false
+				}
+			}
+		}
+	}
+	if %UsingBones
+	{
+		gosub _sc CheckForWorldSave
+		gosub _sc CheckResources %BoneType #backpackid
+		set %BonesToDrag %RequiredBones - #result
+		if %BonesToDrag > 0
+		{
+			finditem %BoneType C_ , %secure
+			if #findkind <> -1 && #findstack >= %BonesToDrag
+			{
+				if %BonesToDrag > %BonesPerDrag
+				{
+					set #strres %BonesPerDrag - #result
+					if #strres <> 0
+					{
+						gosub _sc OpenPaperDoll 670 10
+						gosub _sc _dragItem #findid #strres #backpackid
+					}
+				}
+				if %BonesToDrag <= %BonesPerDrag
+				{
+					gosub _sc OpenPaperDoll 670 10
+					gosub _sc _dragItem #findid %BonesToDrag #backpackid
+				}
+			}
+			if #findkind <> -1 && #findstack < %BonesToDrag
+			{
+          event sysmessage NO bones
+          return #false
+      }
+			if #findkind = -1
+			{
+          event sysmessage NO bones
+          return #false
+			}
+		}
+
+	}
+return
+
+;------------------------------------
+; This will calculate how many resources are already present
+; in our backpack, so we'll take only the needed resources
+
+sub CheckResources
+
+	if %0 < 2 || %1 = N/A || %2 = N/A
+	{
+		display ok Wrong use of Sub CheckResources: some required arguments are missing!
+			+$Script will be halted.
+		halt
+	}
+
+	if %3 = N/A || %0 <= 2
+		set %3 0
+
+	set !Item %1
+	set !Container %2
+	set !Colour %3
+
+	set !TotalAmmount 0
+
+	cr1:
+	gosub _sc CheckForWorldSave
+	finditem !Item C_ , !Container
+	if #findkind <> -1
+	{
+		if !Colour <> any && #findcol <> !Colour
+		{
+			ignoreItem #findid resources
+			goto cr1
+		}
+		if !Colour <> any && #findcol = !Colour
+		{
+			set !TotalAmmount !TotalAmmount + #findstack
+			ignoreItem #findid resources
+			goto cr1
+		}
+		if !Colour = any
+		{
+			set !TotalAmmount !TotalAmmount + #findstack
+			set !Colour #findcol ; to be sure all the cloth are of the same color
+			ignoreItem #findid resources
+			goto cr1
+		}
+	}
+
+	ignoreItem reset resources
+
+	if !TotalAmmount > 0
+		set %ClothColour !Colour
+
+	set #result !TotalAmmount ;dirty workaround
+
+return #result
+
+;------------------------------------
+; This is the core of the scrip
+; This will craft and keep track of all the pieces
+; needed to accomplish the bod
+;
+; DO NOT EDIT THIS!
+;
+; %1 Start Offset
+; %2 End Offset
+
+sub Craft
+	set %CraftStart %1
+	set %CraftStop %2
+	set %ItemAmmount 0
+	ci1:
+	gosub _sc CheckForWorldSave
+	finditem %type C_ , #backpackid
+	if #findkind <> -1
+	{
+		ignoreitem #findid alreadycrafted
+		goto ci1
+	}
+
+	c2:
+  event sysmessage INPUT	%CraftStart %CraftStop
+	gosub _sc CheckForWorldSave
+	set %lpc #lpc
+	set #lpc 100
+	for !i %CraftStart %CraftStop
+	{
+		gosub _sc CheckForWorldSave
+		if %RemUses < 0
+		{
+			Event Sysmessage Remuses Problems
+			pause
+		}
+		if %RemUses = 0
+		{
+			set %CurrentTool %CurrentTool + 1
+			if %CurrentTool > %ToolCount
+			{
+				gosub _sc OpenPaperDoll 670 10 ; To be sure it has the focus
+				gosub _sc GetSewingKit
+				set %CurrentTool 1
+			}
+			set %RemUses %ToolRU . %CurrentTool
+			call %MenuFunctions BringUpCraftMenu %ToolId . %CurrentTool
+		}
+		if !i = 1
+		{
+			set %CurrentTool 1
+			set %RemUses %ToolRU . %CurrentTool
+			call %MenuFunctions BringUpCraftMenu %ToolId . %CurrentTool
+			if %Material <> Cloth && %Material <> %LastHideColor
+			{
+				set %LastHideColor %Material
+				call %MenuFunctions ChooseMaterial %HideColor . %Material
+			}
+			call %MenuFunctions CraftAnything %Category %Piece
+		}
+		if !i <> 1
+		{
+			if %Usingbones
+			{
+				finditem %BoneType C_ , #backpackid
+				if #findkind = -1 || #findstack < %Bones
+				{
+					gosub _sc GetMaterials
+					if #result = #false
+          {
+           return #false
+          }
+
+					call %MenuFunctions BringUpCraftMenu %ToolId . %CurrentTool
+				}
+			}
+			call %MenuFunctions ClickMakeLast
+		}
+
+		wait 2
+		set %RemUses %RemUses - 1
+		set !findtry 0
+		c3:
+    gosub _sc CheckForWorldSave
+		set !FindTry !FindTry + 1
+		finditem %type C_ , #backpackid
+		if #findkind = -1 && !FindTry < 10
+		{
+			wait 3
+			goto c3
+		}
+		if #findkind <> -1
+		{
+			if %BodIsExceptional
+			{
+				gosub _sc GetProperty #findid
+				set %ItemProperty #result
+
+				if exceptional in %ItemProperty
+				{
+					set %ItemAmmount %ItemAmmount + 1
+					set %BodToMakeQuantity ( %BodToMakeQuantity - 1 )
+					ignoreitem #findid bodpieces
+				}
+				if exceptional notin %ItemProperty
+				{
+					if %UsingBones
+					{
+						if %ItemToTrashCount = N/A
+							set %ItemToTrashCount 0
+
+						if %ItemToTrashCount < 5
+						{
+							set %ItemToTrashCount %ItemToTrashCount + 1
+							set %ItemToTrashId . %ItemToTrashCount #findid
+							ignoreitem #findid bodpieces
+						}
+
+						if %ItemToTrashCount = 5
+						{
+							call %MenuFunctions ClickExit
+							for !k 1 5
+								gosub _sc _dragItem %ItemToTrashId . !k nostack %Trash
+							set %ItemToTrashCount 0
+							call %MenuFunctions BringUpCraftMenu %ToolId . %CurrentTool
+						}
+					}
+					if ! %UsingBones
+					{
+						set #lobjectid %scissor
+						set #ltargetid #findid
+						Event macro 17 0
+						target 5s
+						set #ltargetkind 1
+						Event Macro 22 0
+						wait 5
+					}
+				}
+			}
+			if ! %BodIsExceptional
+			{
+				set %ItemAmmount %ItemAmmount + 1
+				set %BodToMakeQuantity %BodToMakeQuantity - 1
+				ignoreitem #findid bodpieces
+			}
+		}
+
+	}
+
+	set #lpc %lpc
+
+	if %BodToMakeQuantity > 0
+	{
+		call %MenuFunctions ClickExit
+		set %CraftStart %ItemAmmount + 1
+		set %CraftStop %ItemAmmount + %BodToMakeQuantity
+		gosub _sc CalculateMaterials %BodToMakeQuantity
+		gosub _sc GetMaterials
+		if #result = #false
+    {
+     event sysmessage OUT OF MATERIAL
+     return #false
+    }
+		gosub _sc GetSewingKit
+		set %CurrentTool 1
+		set %RemUses %ToolRU . %CurrentTool
+		call %MenuFunctions BringUpCraftMenu %ToolId . %CurrentTool
+		goto c2
+	}
+
+	if %Usingbones && %ItemToTrashCount > 0
+	{
+		for !k 1 %ItemToTrashCount
+			gosub _sc _dragItem %ItemToTrashId . !k nostack %Trash
+		set %ItemToTrashCount 0
+	}
+
+	call %MenuFunctions ClickExit
+	ignoreitem reset bodpieces
+
+return #true
+
+;------------------------------------
+; Once that all the piece are crafted this will
+; add them to the BOD
+
+sub FillBod
+	set #lobjectid %Bod
+	fb_useBod:
+;	gosub _sc CheckForWorldSave
+	event macro 17 0
+	gosub waitForSysVars contsize = 510_275 contname = generic_gump 5
+	if ! #result
+		goto fb_useBod
+
+	set %FillX #contposx + 140
+	set %FillY #contposy + 200
+	click %FillX %FillY f
+	target 3s
+	gosub _sc CheckForWorldSave
+	fb1:
+	finditem %Type C_ , #backpackid
+	if #targcurs <> 1 && #findcnt > 1
+	{
+		click %FillX %FillY f
+		target 30
+	}
+	if #findkind <> -1
+	{
+		set #ltargetid #findid
+		set #ltargetkind 1
+		Event Macro 22 0
+		wait 5
+		if #findcnt > 1
+			target 3s
+		goto fb1
+	}
+
+	set %lpc #lpc
+	set #lpc 500
+	gosub _sc GetProperty %Bod
+	set %BodProperty #result
+	call %BodFunctions GetBodAlredyMadeQuantity %BodProperty
+	set %BodAlredyMadeQuantity #result
+	set #lpc %lpc
+
+	if %BodAlredyMadeQuantity < %BodQuantity
+		goto fb1
+
+	gosub waitForSysVars contsize = 510_275 contname = generic_gump targcurs = 0 5
+	if ! #result
+		goto fb1
+
+	set %FillY %FillY + 25 ;exit Button
+	fb6:
+	gosub _sc CheckForWorldSave
+	click %FillX %FillY F
+;	gosub waitForSysVars contsize <> 510_275 contname <> generic_gump 5
+;	if ! #result
+;		goto fb6
+
+	ignoreitem reset alreadycrafted
+	Event Sysmessage All right,....
+
+return
+
+;------------------------------------
+; This will drop the filled bod in the selected secure
+
+sub DropBod
+ dropone:
+ gosub _sc CheckForWorldSave
+ exevent drag %bod
+ wait 10
+ exevent dropc %dBook
+ wait 10
+return
+
+;==================
+; SETUP SUBS
+;==================
+
+;------------------------------------
+; Most of the needed var are inizialized here
+
+sub InizializeVars
+
+	;==================================
+	; Global Variables
+	;==================================
+	set %Secure *BoydonRTBFsecure
+	set %UseBank *BoydonRTBFUseBank
+	set %UseColoredCloth *BoydonRTBFUseColoredCloth
+	set %Trash %ThrashID
+
+	;==================================
+	; Various Types
+	;==================================
+	set %BodType EYM
+	set %BoneType GUF
+	set %ClothType CUI_BUI
+	set %HideType EEG_JJG_MJG
+	set %ScissorType JAG_KAG
+	set %SewingKitType HAG
+
+	;==================================
+	; Setup Variables
+	;==================================
+	;set #lpc 100
+	set %BonesPerDrag 40
+	set %LastHideColor N/A
+
+	;==================================
+	; Leather Colours array
+	;==================================
+	set %HideColor . 0 Leather
+	set %HideColor . 2220 Spined
+	set %HideColor . 2117 Horned
+	set %HideColor . 2129 Barbed
+
+	;==================================
+	; Library Variables
+	;==================================
+	set %BodFunctions BodFunctions.euo
+	set %MenuFunctions CraftMenuFunctions.euo
+	set %BodRequredVersion 120
+	set %MenuRequredVersion 130
+
+return
+
+;------------------------------------
+; This is to be sure that the correct version
+; of libraries is being used and that all files
+; are in the right place (all in the same directory).
+;
+; %1 Library File Name
+; %2 Library name
+; %3 Required library version
+
+sub InizializeLibraries
+
+	if %0 < 3 || %1 = N/A || %2 = N/A || %3 = N/A
+	{
+		display ok Wrong use of Sub InizializeLibraries: some required arguments are missing!
+			+$Script will be halted.
+		halt
+	}
+
+
+	set !FileName %1
+	set !LibraryName %2
+	set !RequiredeVersion %3
+
+	set #result N/A
+	call !FileName Inizialize
+
+	if #result = N/A ;Impossible to open the library
+	{
+		display ok Impossible to Inizialize !LibraryName Functions.$
+			+Be sure you unziped !FileName in THE SAME directory with EasyUO executable AND the main script!$$
+			+Script will be halted.
+			halt
+	}
+
+	if #result < !RequiredeVersion ;Wrong version of the library
+	{
+		display ok You are using an obsolete version of !LibraryName Functions.$
+			+Please Update !FileName to the latest version!$$
+			+Script will be halted.
+			halt
+	}
+
+return
+
+;------------------------------------
+; The script will loop here while you are hacking
+; with the setup menu
+
+sub SetupLoop
+	sl1:
+	gosub _sc CheckForWorldSave
+	set #menubutton N/A
+	if ! *BoydonRTBFUseBank
+	{
+		finditem *BoydonRTBFsecure G_2
+		if #findkind = -1
+		{
+			display ok You are to far from the resource container!
+								+$Max allowed discstance from it is two tiles.
+			goto sl1
+		}
+	}
+	finditem *BoydonRTBFtrash G_2
+	if #findkind = -1
+	{
+		display ok You are to far from the Trash!
+							+$Max allowed discstance from it is two tiles.
+		set *BoydonRTBFtrash N/A
+		if %LOLLOCOMMANDER = N/A
+      menu Set Trashid *BoydonRTBFtrash
+		goto sl1
+	}
+	if *BoydonRTBFUseBank
+	{
+		sl_openBank:
+		gosub _sc CheckForWorldSave
+		Event Macro 1 0 Bank
+		gosub waitForSysVars contname = container_gump conttype in IKF_HIF 3
+		if ! #result
+			goto sl_openBank
+	}
+	if ! *BoydonRTBFUseBank
+		gosub _sc OpenContainer *BoydonRTBFsecure
+	if %LOLLOCOMMANDER = N/A
+	   menu Get ColoredClothCheckBox
+  if %LOLLOCOMMANDER = N/A
+     set *BoydonRTBFUseColoredCloth #menures
+  if %LOLLOCOMMANDER = N/A
+     Menu Hide
+return
+
+;--------- EasyUO Menu Designer Code Begin ---------
+sub SetupMenu
+  if %LOLLOCOMMANDER <> N/A
+    return
+	menu Clear
+	menu Window Title Boydon's RunUO Tailor Bod Filler
+	menu Window Color BtnFace
+	menu Window Size 331 175
+	menu Font Transparent #true
+	menu Font Align Right
+	menu Font Name MS Sans Serif
+	menu Font Size 10
+	menu Font Style
+	menu Font Color WindowText
+	menu Font Transparent #false
+	menu Font Align Left
+	menu Text SecureLabel 4 12 Secure Container :
+	menu Text TrashLabel 4 40 Trash Barrel :
+	menu Font BGColor Window
+	menu Edit SecureId 124 8 105 *BoydonRTBFsecure
+	menu Font BGColor BtnFace
+	menu Button SetSecure 236 8 40 21 Set
+	menu Button SetBank 280 8 40 21 Bank
+	menu Button Start 122 148 93 21 START!
+	menu Font BGColor Window
+	menu Edit TrashId 124 44 105 *BoydonRTBFTrash
+	menu Font BGColor BtnFace
+	menu Button SetTrash 236 44 40 21 Set
+	menu Font Size 8
+	menu Check ColoredClothCheckBox 106 108 129 29 *BoydonRTBFUseColoredCloth Use colored cloth to complete cloth BODS
+	menu Show 345 20
+	wait 2s
+return
+;--------- EasyUO Menu Designer Code End ---------
+
+;==================
+; REUSABLE SUBS
+;==================
+
+;==================
+;**
+;* @name OpenContainer
+;* @ver 1.0 12May05
+;* @author  Boydon
+;* @purpose Open a container or the bank to a give location
+;*
+;* @params %1 req #contid or "bank" if you want to use the bank
+;*				 %2 opt #contposx where you want to open the container (if not speified default will be 0)
+;*				 %3 opt #contposy where you want to open the container (if not speified default will be 0)
+;*				 %4 opt If you want to use the bank set this to #true (default value is #false)
+;*
+;* @returns
+;*
+;* @example gosub _sc OpenContainer %secure 205 25 #false
+;*						this will open %secure at positions 205 25
+;*					gosub _sc opencontainer bank 205 25 #true
+;*						this will open your bank at positions 205 25
+;* @status Tested and working
+
+sub OpenContainer
+
+	if %0 < 1 || %1 = N/A
+	{
+		display ok Wrong use of Sub OpenContainer: some required arguments are missing!
+			+$Script will be halted.
+		halt
+	}
+
+	if %2 = N/A || %0 <= 1
+		set %2 0
+	if %3 = N/A || %0 <= 2
+		set %3 0
+	if %4 = N/A || %0 <= 3
+		set %4 #false
+
+	set !ContId %1
+	set !ContX %2
+	set !ContY %3
+	set !UseBank %4
+
+	set #nextCPosX !ContX
+	set #nextCPosY !ContY
+
+	__boy_oc1:
+	gosub _sc CheckForWorldSave
+	if !UseBank = #false && !ContId <> bank
+	{
+		set #LOBJECTID !ContId
+		__boy_oc2:
+		gosub _sc CheckForWorldSave
+		Event Macro 17 0
+		wait 20
+
+		if #contid <> !ContId
+		{
+			set #nextCPosX !ContX
+			set #nextCPosY !ContY
+			goto __boy_oc2
+		}
+	}
+	if !UseBank = #true && !ContId = bank
+	{
+		Event Macro 1 0 Bank
+		wait 20
+	}
+
+	if #contname <> container_gump
+		goto __boy_oc1
+
+
+	if #contposx <> !ContX || #contposy <> !ContY
+	{
+		contpos !ContX !ContY
+		wait 20
+	}
+
+return
+
+;==================
+;**
+;* @name OpenPaperdoll
+;* @ver 1.0 12May05
+;* @author  Boydon
+;* @purpose Open the Paperdoll to a givent location an return X,Y coordinatas
+;*					of the backpack click location into user defined variables to
+;*					drop items inside it. Those coords depend on %1 and %2 values
+;*
+;* @params %1 opt #contposx where you want to open the paperdoll (default will be 0)
+;*				 %2 opt #contposy where you want to open the paperdoll (default will be 0)
+;*				 %3 opt name of the variable without the %symbol containing the X location
+;*								 where to click to drop items (default is "BpDropX")
+;*				 %4 opt name of the variable without the %symbol containing the Y location
+;*								 where to click to drop items (default is "BpDropY")
+;*
+;* @returns
+;*
+;* @example gosub _sc openPaperdoll
+;*						tis is the standard call and will open your paperdoll to pos 0 0
+;*					gosub _sc OpenPaperdoll 205 25
+;*						this will open paperdoll at positions 205 25
+;*					gosub _sc OpenPaperdoll 205 25 backpackX backpackY
+;*						this will open your paperdoll at positions 205 25 and return
+;*						X and Y location of the backpack to %backpackX %backpackY
+;* @status
+
+sub OpenPaperdoll
+
+	if %1 = N/A || %0 = 0
+		set %1 0
+	if %2 = N/A || %0 <= 1
+		set %2 0
+	if %3 = N/A || %0 <= 2
+		set %3 BpDropX
+	if %4 = N/A || %0 <= 3
+		set %4 BpDropY
+
+	set !OpenX %1
+	set !OpenY %2
+	set !BPDropX %3
+	set !BPDropY %4
+
+	__boy_op1:
+	gosub _sc CheckForWorldSave
+	set #nextCPosX !OpenX
+	set #nextCPosY !OpenY
+	Event Macro 8 1 ;Open Paperdoll
+	wait 20
+
+	if #contname <> paperdoll_gump
+		goto __boy_op1
+
+	if #contposx <> !OpenX || #contposy <> !OpenY
+	{
+		contpos !OpenX !OpenY
+		wait 20
+	}
+
+	set % . !BPDropX #contposx + 140
+	set % . !BPDropY #contposy + 225
+return
+
+;==================
+;**
+;* @name GetProperty
+;* @ver 0.9 15May05
+;* @author  Boydon
+;* @purpose Get the #property of a given item tring to avoid errors, null values and
+;*					unexpected values.
+;*
+;* @params %1 req Id of the item you want to EP
+;*
+;* @returns #property of %1
+;*
+;* @example gosub _sc GetProperty #findid
+;*						tis is the standard call and will EP #findid
+;* @status Fully tested and working
+
+sub GetProperty
+	if %0 < 1 || %1 = N/A
+	{
+		display ok Wrong use of Sub GetProperty: some required arguments are missing!
+			+$Script will be halted.
+		halt
+	}
+
+	event property %1
+	gosub _sc CheckForWorldSave
+	wait 2
+return #property
+
+;==================
+;**
+;* @name GetToolUses
+;* @ver 1.0 16May05
+;* @author  Boydon
+;* @purpose Determine how many uses a tool has left
+;*
+;* @params %1 req id of the tool
+;*
+;* @returns The remaining uses of the given tool
+;*
+;* @example gosub _sc GetToolUses #findid
+;* @status Tested and working fine
+
+sub GetToolUses
+
+	if %0 < 1 || %1 = N/A
+	{
+		display ok Wrong use of Sub GetToolUses: some required arguments are missing!
+			+$Script will be halted.
+		halt
+	}
+
+	set !lpc #lpc
+	set #lpc 500
+
+	gosub _sc GetProperty %1
+	str pos #result Uses Remaining
+	set !RemUses #strres + 15
+	str del #result 1 !RemUses
+
+	set !RemUses #strres
+	str pos !RemUses $W
+	str del !RemUses #strres 19
+	;set !RemUses #strres
+
+	set #lpc !lpc
+
+return #strres
+
+sub CheckForWorldSave
+ call myCalls.txt checkForWorldSave
+return
+
+;==================
+; IMPORTED SUBS
+;==================
+
+;==================================
+; Script Name: sub waitForSysVars
+; Author: Quintok / Raziel
+; Version: 1.04
+; Client Tested with: 4.0.2b
+; EUO version tested with: 0078
+; Shard OSI / FS: OSI / FS
+; Revision Date: 21st March 2004
+; Public Release: 20th March 2004
+; Global Variables Used: none
+; Purpose: same as waitForSysVar but for multiple inputs.
+;==================================
+sub waitForSysVars
+  set !cnt %0 / 3
+  if ( %0 % 3 = 1 )
+    set !timeOut #scnt + % . %0
+  else
+    set !timeOut #scnt + 5
+  for !i 1 !cnt
+  {
+    set !offset 3 * !i - 2
+    set !evaluation !offset + 1
+    set !value !offset + 2
+    if ! ( # . % . !offset % . !evaluation % . !value )
+      set !i 0
+    if #scnt > !timeout
+      return #false
+  }
+return #true
+
+sub _dragItem
+  set !Id %1
+	set !Quantity %2
+	set !Container %3
+	if !Quantity <> nostack
+  	exevent drag !Id !Quantity
+  else
+    exevent drag !Id
+	wait 10
+	exevent dropc !Container
+	wait 10
+return
+
+;==================
+;**
+;* @name DragItem
+;* @ver 1.0 16May05
+;* @author  Vash U'Sgrav
+;* @revision Boydon
+;* @purpose Drag an item and drop it to the given spot
+;*
+;* @params %1 req Id of the object to drag
+;*				 %2 req Amout of item to drag
+;*							0 to drag all the stack
+;*							nostack if the item isn't stackable
+;*				 %3 req X coord where to drop
+;*				 %4 req Y coord where to drop
+;*
+;* @returns
+;*
+;* @example gosub _sc DragItem #findid nostack %BackPackX %BackPackY
+;* @status Tested and working fine
+
+sub DragItem
+  display wrong function!
+	if %0 < 4 || %1 = N/A || %2 = N/A || %3 = N/A || %4 = N/A
+	{
+		display ok Wrong use of Sub DragItem: some required arguments are missing!
+			+$Script will be halted.
+		halt
+	}
+
+	set !DragId %1
+	set !Quantity %2
+	set !DragClickX %3
+	set !DragClickY %4
+
+	set !DropX %BPDropX
+	set !DropY %BPDropY
+
+	msg $
+	_cleardrag:
+	gosub _sc CheckForWorldSave
+	if #contname = stack_gump
+	     {
+	     key ENTER
+       wait 5
+	     click !DropX !DropY
+	     wait 1s
+	     goto _cleardrag
+	     }
+	if #contname = drag_gump
+	     {
+       wait 1s
+	     click !DropX !DropY
+	     wait 1s
+	     goto _cleardrag
+	     }
+	_startstackdrag:
+	event drag !DragId
+	if !quantity <> nostack
+	     {
+	     gosub waitForSysVars contid = !DragId 5
+	     if ! #result
+	           goto  _cleardrag
+	     wait 1
+	     if !Quantity <> 0
+	          msg !quantity $
+	     if !quantity = 0
+	          key ENTER
+	     wait 1
+	     }
+	gosub waitForSysVars contname = drag_gump 5
+	if ! #result
+	     goto _cleardrag
+	wait 1
+	set !ClickCount 0
+	_clickloop:
+	gosub _sc CheckForWorldSave
+	click !dragclickx !dragclicky f
+	set !clickcount !clickcount + 1
+	wait 1s
+	if !clickcount > 6
+	     goto _cleardrag
+	if #lliftedkind = 1
+	     goto _clickloop
+return
+
+;===========
+;**
+;* @name CheckFreeShard
+;* @ver 1.0 2Feb05
+;* @author  Roadkill
+;* @revision Boydon
+;* @purpose  checks if you're on a known OSI shard or not
+;* @params
+;* @returns
+
+sub CheckFreeShard
+
+	set %OsiShards pacific_sonoma_baja_legends_atlantic_chesapeake_catskills_lake , #spc , austin
+	+_napa , #spc , valley_lake , #spc , superior_great , #spc , lakes_siege , #spc , perilous_europa
+	+_drachenfels_oceania_wakoku_formosa_arirang_balhae_asuka_yamato_mugen_hokuto_misuho_izumo_sakura_
+
+	if #shard in %OsiShards
+	{
+		display ok You are playing an OSI shard!$$Sorry, but this script will only work on RunUO Emulated freeshards.$Script will be halted.
+		halt
+	}
+
+return
+
+
+sub _sc
+if #menubutton = STOP
+{
+  set %loop #true
+  exit
+}
+set %_depth %_depth + 1
+namespace push
+namespace local %1 , #scnt2 , #random
+set !_0 %0
+goto !_0
+0:
+    namespace clear
+    namespace pop
+    set %_depth %_depth - 1
+    return
+1:
+    gosub %1
+    goto _scallend
+2:
+    gosub %1 %2
+
+    goto _scallend
+3:
+    gosub %1 %2 %3
+    goto _scallend
+4:
+    gosub %1 %2 %3 %4
+    goto _scallend
+5:
+    gosub %1 %2 %3 %4 %5
+    goto _scallend
+6:
+    gosub %1 %2 %3 %4 %5 %6
+    goto _scallend
+7:
+    gosub %1 %2 %3 %4 %5 %6 %7
+    goto _scallend
+8:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8
+    goto _scallend
+9:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8 %9
+    goto _scallend
+10:
+    gosub %1 %2 %3 %4 %5 %6 %7 %8 %9 %10
+    goto _scallend
+_scallend:
+set %result #result
+if #menubutton = STOP
+{
+  set %loop #true
+  exit
+}
+namespace clear
+namespace pop
+set %_depth %_depth - 1
+return %result
+
+
+;==================
+; DEBUG INFOs
+;==================
+
+;==================
+; VARIBLE LIST AT RUNTIME
+;==================
+
+%Bod ID Current Bod Id
+%BodAlredyMadeQuantity INT How many items have been already added to the bod?
+%BodFunctions STRING Name of the file containing the functions to handle BODs
+%BodIsExceptional BOOLEAN The bod must be exceptional?
+%BodItem* ARRAY Ids of items to be added to the bod
+%BodProperty STRING #property of the current bod
+%BodQuantity INT The quantity of the bod, it can be 10|15|20
+%BodToMakeQuantity INT Number of item left to accomplish the BOD
+%BodType TYPE Type of the Bod
+%Bones INT How many bones for every item to be added to the BOD?
+%BonesPerDrag INT The maximum amount of bones you can have in your backpack
+%BoneType TYPE Type of the Bones
+%BPDropX INT X coord of the BackPack on the PaperDoll
+%BPDropY INT Y coord of the BackPack on the PaperDoll
+%Category INT Number of the category to be used when crafting
+%Cloth INT How many Clothes for every item to be added to the BOD ?
+%ClothType TYPE Type of the clothes
+%CraftStart INT Start index for the Craft sub
+%CraftStop INT Stop index for the Craft sub
+%CurrentTool INT Index of the tool currently used
+%FillX INT X offset of the combine button in BOD gump
+%FillY INT Y offset of the combine button in BOD gump
+%FindTry INT Counter used in the craft Sub
+%HideColor* ARRAY Names of the hides indexed by their color
+%Hides INT How many Hides for every item to be added to the BOD ?
+%HideType TYPE Type of the Hides
+%i INT Counter in the for loop of the craft sub
+%j INT Counter in the for loop of the FillBod sub
+%k INT Counter in the for loop of the trash loop
+%ItemAmmount INT Counter for the items to be added to the boud
+%ItemToTrashCount INT Counter for the items to be trashed
+%ItemToTrashId* ARRAY List ot the IDs of the item to be trashed
+%LastHideColor INT This keep track of the last used color so you don't have to choose it everytime
+%Material MIXED this can be cloth|2220|2117|2129
+%MaterialToDrag INT How much material should be dropped to the BP?
+%MenuFunctions STRING Name of the file containing the functions to handle crafing menues
+%OsiShards STRING All known OSI shards
+%Piece INT Number of the piece to be used when crafting
+%RemUses INT Left uses of the current sewing kit
+%RequiredMaterial INT Total Hides|Cloth needed to accomplish the BOD
+%Scissor ID Id of the scissor being used
+%ScissorType TYPE Type of the Scissor
+%Secure ID Id of the secure
+%SewingKitType TYPE Type of the Sewing Kit
+%ToolCount INT Counter of the total tools that are going to be used to Craft
+%ToolId* ARRAY The id of all the tools that are going to be used to Craft
+%ToolRU* ARRAY Remaining Uses of all tools that are going to be used to Craft
+%TotalUses INT Sum of the left uses of the tools that are going to be used
+%Tmplpc INT Temp Var to store original value of #lpc
+%Trash ID Id of the trash Barrel
+%TrashDropX INT X drop spot for the trash barrel
+%TrashDropX INT Y drop spot for the trash barrel
+%Type TYPE Type of the item that is going to be added to the BOD
+%UseBank BOOLEAN Using bank as secure?
+%UseColoredCloth BOOLEAN Do you want to use coloured Cloth to craft cloth bods? (ATM is #true by default)
+%Usingbones BOOLEAN The BOD needs bones to be accomplished?
+
+;==================
+; SAVE / CLEANING INFO
+;==================
+
+;------------------
+; Save Messages
+;------------------
+THE_WORLD_WILL_SAVE_IN ; advice before the save
+WORLD_IS_SAVING ; world save is starting
+WORLD_SAVE_COMPLETE ; world save is complete
+
+;------------------
+; Resource Cleaning Messages
+;------------------
+CLEANING ; cleaning save is starting
+CLEANED ; cleaning is complete
+
+;------------------
+; #jcolour of save / cleaning message
+;------------------
+Save journal color 53
+
+

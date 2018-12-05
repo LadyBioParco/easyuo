@@ -1,0 +1,13 @@
+set %trashID ZYZLSMD
+
+loopfindtrash:
+finditem * C_ , #contid
+if #findkind <> -1
+{
+ exevent drag #findid #findstack
+ wait 5
+ exevent dropc %trashID
+ wait 5
+ goto loopfindtrash
+}
+halt

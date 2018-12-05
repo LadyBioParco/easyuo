@@ -1,0 +1,190 @@
+initevents
+Set #LPC  200000
+set %swait 2
+set %lwait 5
+set %robabag PKBKKMD
+set %goodbag XQZYOMD
+
+bowcraftquest:
+gosub getQuest
+gosub boltQuest
+if #result = #true
+ goto endquest
+goto bowcraftquest
+
+endquest:
+gosub accept
+set %questcount %questcount + 1
+if #weight > 400
+ event sysmessage #weight
+if %weight > 530
+{
+ display full!
+ halt
+}
+event property #backpackid
+if 120/125 in #property || 121/125 in #property || 122/125 in #property
+{
+ display full!
+ halt
+}
+
+refindreward:
+finditem ZJF C_ , #backpackid
+if #findkind = -1
+ goto refindreward
+set #lobjectid #findid
+event macro 17 0
+openreward:
+wait %lwait
+if #CONTID <> #findid
+ goto openreward
+set !lookin #findid
+checkalltools:
+finditem UFG C_ , !lookin
+if #findkind <> -1
+{
+ event property #findid
+ sound chimes.wav
+ exevent drag #findid
+ wait %lwait
+ exevent dropc %robabag
+ wait %lwait
+ goto checkalltools
+}
+finditem EWR_DWR_GWR_FWR C_ , !lookin
+if #findkind <> -1
+{
+ event property #findid
+ exevent drag #findid
+ wait %lwait
+ exevent dropc %robabag
+ wait %lwait
+ goto checkalltools
+}
+
+findnextany:
+finditem * C_ , !lookin
+if #findkind <> -1
+{
+ event property #findid
+ if fire_horn notin #property && bow notin #property && ring notin #property && Recipe notin #property && bracelet notin #property && talisman notin #property
+ {
+  sound notify.wav
+  display Tadaa! #property
+  exevent drag #findid
+  wait %lwait
+  exevent dropc %goodbag
+  wait %lwait
+  goto sorting_end
+ }
+ if deed in #property || runic in #property || Faerie_Fire in #property || blight_gripped in #property || Mischief Maker in #property || Silvani in #property || Reaper in #property || ornate in #property
+ {
+  sound notify.wav
+  Event sysmessage #property
+  exevent drag #findid
+  wait %lwait
+  exevent dropc %goodbag
+  wait %lwait
+  goto sorting_end
+ }
+ if ring in #property || bracelet in #property
+ {
+  str len #property
+  if #strres > 90 || taming in #property
+  {
+    Event sysmessage #property
+    exevent drag #findid
+    wait %lwait
+    exevent dropc %robabag
+    wait %lwait
+    goto sorting_end
+  }
+ }
+ set !keep #false
+
+ sorting_end:
+ ignoreitem #findid
+ goto findnextany
+}
+
+exevent drag !lookin
+wait %lwait
+exevent dropc KMWNMMD
+wait %lwait
+goto bowcraftquest
+
+halt
+
+sub getQuest
+ namespace push
+ namespace local getQuest
+ NPCgump_:
+ set #lobjectid CJOB
+ event macro 17 0
+ wait %swait
+ if #contsize <> 507_436
+  goto NPCgump_
+ set !spx #contposx + 207
+ set !spy #contposy + 113
+ savePix !spx !spy 1
+ if #pixcol <> 8701514
+ {
+  goto NPCgump_
+ }
+ set !qcx #contposx + 130
+ set !qcy #contposy + 400
+ click !qcx !qcy f
+ wait %swait
+ namespace clear
+ namespace pop
+return
+
+sub boltQuest
+ finditem LNK C_ , #backpackid
+ if #findkind = -1 || #findstack < 10
+ {
+  display finiti i dardi
+  halt
+ }
+ exevent popup #charid 71 110
+ wait %lwait
+ click 71 110
+ set !kindIndex #jindex
+ nextLNK:
+ event macro 25 0
+ set #ltargetid #findid
+ event macro 22 0
+ wait %lwait
+ for !i !kindIndex #jindex
+ {
+  scanjournal !i
+  if That_item_does_not_match in #journal
+  {
+   return #false
+  }
+  if Your_quest_is_complete in #journal
+  {
+   key esc
+   return #true
+  }
+ }
+ goto nextLNK
+return #true
+
+sub accept
+ namespace push
+ namespace local accept
+ set #lobjectid CJOB
+ event macro 17 0
+ NPCgump:
+ wait %swait
+ if #contsize <> 507_436
+  goto NPCgump
+ set !qcx #contposx + 130
+ set !qcy #contposy + 400
+ click !qcx !qcy f
+ wait %swait
+ namespace clear
+ namespace pop
+return
